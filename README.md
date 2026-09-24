@@ -56,6 +56,9 @@ estimate.
 
 ## Install
 
+This repository is an **agent skill** (`skills/thermoforming-dfm/`) wrapped in a plugin
+manifest so it can be installed in one line.
+
 As a Claude Code plugin:
 
 ```
@@ -63,7 +66,8 @@ As a Claude Code plugin:
 /plugin install thermoforming-dfm
 ```
 
-Or copy the directory into `.claude/skills/thermoforming-dfm/` of your project.
+Or as a plain skill — copy `skills/thermoforming-dfm/` into `.claude/skills/` of your
+project. Nothing in the skill depends on the plugin wrapper.
 
 ```bash
 pip install -r requirements.txt
