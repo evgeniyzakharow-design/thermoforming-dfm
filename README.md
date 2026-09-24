@@ -37,6 +37,9 @@ python3 skills/thermoforming-dfm/scripts/vf_tool.py measure part.stl --pull z --
   follows from each layout, and a warning when the mould sits more than 1 H from the
   frame — too much spare sheet is the first cause of webbing. `--window` models a
   reducing window and shows what it costs in wall thickness.
+- **Two guards before the numbers**: a units check that fires when the part is under
+  20 mm or over 2.5 m across — usually a file exported in centimetres — and a plain
+  "does not fit the blank" answer instead of an empty wall block.
 - **Depth limit by method**: bare male tool 0.25, with a pre-blown bubble 0.5, plug assist
   1.0, taken over the mould height rather than the part's.
 - **Three points to measure on the first formed part**, with expected values — the loop
