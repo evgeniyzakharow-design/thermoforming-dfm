@@ -1,6 +1,6 @@
 ---
 name: thermoforming-dfm
-description: Design-for-manufacturing review of a part or a mould for vacuum forming / thermoforming — draft, radii by local draw, depth limit by method, wall thickness by Illig's law, undercuts, webbing, venting, how many parts fit a blank, and what to measure on the first formed part. Use when asked whether a part (.stl/.3mf/.step) can be vacuum formed or thermoformed, how thin the wall will get, how many parts fit a sheet, how to turn a 3D-printed design into a formable one, or for a thermoforming DFM review.
+description: Design-for-manufacturing review of a part or a mould for vacuum forming / thermoforming — draft, radii by local draw, depth limit by method, wall thickness by Illig's law, undercuts, webbing, venting, how many parts fit a blank, and what to measure on the first formed part. Use when asked whether a part (.stl/.3mf/.step) can be vacuum formed or thermoformed, how thin the wall will get, how many parts fit a sheet, how to turn a 3D-printed design into a formable one, or for a thermoforming DFM review. Also matches the same questions in Russian: «годится ли деталь под вакуумную формовку», «какая будет толщина стенки», «сколько деталей выйдет с листа», «какой нужен уклон и радиус», «как перевести печатную модель в формуемую».
 license: MIT
 ---
 

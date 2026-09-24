@@ -1,5 +1,7 @@
 # thermoforming-dfm
 
+[Русский](README.ru.md)
+
 An agent skill for **vacuum forming / thermoforming design review**: draft, radii, depth
 limits, wall thickness, venting, nesting on the blank — measured from a mesh, compared
 against rules that carry their sources with them.
