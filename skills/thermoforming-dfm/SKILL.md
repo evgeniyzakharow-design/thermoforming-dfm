@@ -39,6 +39,11 @@ bubble promotes it to 0.5, a plug assist has to be stated. Limits: male 0.25, ma
 pre-blown bubble 0.5, plug assist 1.0, plug plus bubble 1.5. The ratio is taken over the *mould* height — part plus trim allowance — because the
 sheet is drawn over all of it; the part-only figure is reported beside it.
 
+**If the user has no bubble figure, start from 60-80 % of the deepest part on the tool**
+(`references/rules.md`, section 15) and give that as `--dome`. Then correct it on the
+first two parts: a thin top means the bubble was too big, thin bottom corners mean it was
+too small.
+
 **The bubble is given as a height, not as a time.** `--dome` in millimetres, or
 `--blow-share 0..1` to let the part's own draw pick it. Seconds are machine-specific —
 the same second grows a different bubble on a different blower — so `--blow-time` only
