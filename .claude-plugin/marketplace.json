@@ -1,0 +1,21 @@
+{
+  "name": "thermoforming-dfm",
+  "owner": { "name": "evgeniyzakharow-design" },
+  "interface": { "displayName": "thermoforming-dfm" },
+  "metadata": { "description": "Design-for-manufacturing review for vacuum forming and thermoforming." },
+  "description": "Design-for-manufacturing review for vacuum forming and thermoforming.",
+  "version": "0.1.0",
+  "plugins": [
+    {
+      "name": "thermoforming-dfm",
+      "source": "./",
+      "description": "Thermoforming DFM: draft, radii by local draw, depth limits by method, wall thickness by Illig's law, venting, nesting on the blank.",
+      "version": "0.1.0",
+      "author": { "name": "evgeniyzakharow-design" },
+      "repository": "https://github.com/evgeniyzakharow-design/thermoforming-dfm",
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["cad", "dfm", "thermoforming", "vacuum-forming", "manufacturing", "skills"]
+    }
+  ]
+}
