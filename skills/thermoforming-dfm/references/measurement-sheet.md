@@ -22,7 +22,7 @@ Three points, top to bottom. Expected values come with the job's calculation.
 |---|---|---|
 | 1 | **Top of the part** — where the sheet landed first | at the edge of any machined opening or hole on top |
 | 2 | **Middle of a side wall** | at the edge of a side slot; failing that, on the offcut from that wall |
-| 3 | **Thinnest bottom corner** — the outer corner at the base | at the trim line |
+| 3 | **The thinnest spot the calculation names** — usually an outer corner near the base, but with a pre-blown bubble it moves up the wall; take the coordinates from the report | at the trim line, or at the nearest edge |
 
 Any other accessible edge is a bonus — note where it was.
 

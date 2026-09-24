@@ -18,6 +18,9 @@ import numpy as np
 import trimesh
 
 AXES = {"x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1]}
+# Depth limit is set by the method, not by the material (Sheryshev's ladder)
+METHOD_DEPTH = {"male": 0.25, "male-bubble": 0.5, "plug": 1.0, "plug-bubble": 1.5}
+
 VACUUM_KGF_PER_M2 = 9000.0   # practical pull of a working vacuum: ~0.9 bar over the footprint
 
 
@@ -70,7 +73,7 @@ def wall_illig(win, parts, one_side, foot, t):
             "F1_mm2": round(f1), "F2_mm2": round(f2)}
 
 
-def layout(w, l, hm, clamp, bar, blanks, one_side=None, t=3.0):
+def layout(w, l, hm, clamp, bar, blanks, one_side=None, t=3.0, window=None):
     """How many moulds fit per blank, and the wall that follows from that layout.
 
     Spacing rule: gap between moulds 1.75 * mould height (1.3 * H as a hard minimum,
@@ -80,12 +83,25 @@ def layout(w, l, hm, clamp, bar, blanks, one_side=None, t=3.0):
     out = []
     foot = w * l
     for bw, bl in blanks:
-        win = (bw - 2 * clamp, bl - 2 * clamp)
-        row = {"blank_mm": [bw, bl], "window_mm": list(win)}
+        win = tuple(window) if window else (bw - 2 * clamp, bl - 2 * clamp)
+        row = {"blank_mm": [bw, bl], "window_mm": list(win),
+               "window_source": "given" if window else "blank minus clamped rim"}
         for name, gap, edge in (("recommended", max(1.75 * hm, 25), 0.5 * hm),
                                 ("minimum", max(1.3 * hm, 25), 0.3 * hm)):
             n = max(fits(win[0], a, edge, gap) * fits(win[1], b, edge, gap) for a, b in ((w, l), (l, w)))
-            row[name] = {"parts": n, "gap_mm": round(gap, 1), "edge_mm": round(edge, 1)}
+            # how much spare sheet is actually left round the moulds: too much webs (rules 6, 11)
+            spare = min((win[i] - (max(fits(win[i], d, edge, gap), 1) * d +
+                                   (max(fits(win[i], d, edge, gap), 1) - 1) * gap)) / 2.0
+                        for i, d in ((0, w), (1, l)))
+            row[name] = {"parts": n, "gap_mm": round(gap, 1), "edge_mm": round(edge, 1),
+                         "actual_edge_mm": round(spare, 1),
+                         "actual_edge_in_H": round(spare / hm, 2) if hm else None}
+            if hm and spare > hm:
+                row[name]["webbing_risk"] = (
+                    "mould sits %.1f H from the frame, outside the 0.3-1.0 H band: too much spare "
+                    "sheet is the first cause of webbing. Use a reducing window about %d x %d mm "
+                    "(--window), or take up the excess with a 45 deg apron round the base"
+                    % (spare / hm, round(w + hm), round(l + hm)))
             if one_side:
                 row[name]["wall_illig"] = wall_illig(win, n, one_side, foot, t)
             grid = max(((cells(win[0], a, edge, bar), cells(win[1], b, edge, bar)) for a, b in ((w, l), (l, w))),
@@ -357,24 +373,36 @@ def undercut_grid(mesh, p, pitch=2.0):
 def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0):
     """Draft, projected area and undercuts computed here, with no outside tool."""
     n, a = mesh.face_normals, mesh.area_faces
-    cosp = np.abs(n @ p)
+    along = n @ p
+    cosp = np.abs(along)
     draft = np.degrees(np.arcsin(np.clip(cosp, 0, 1)))
     wall = cosp < math.sin(math.radians(wall_limit))
     curved = curved_faces(mesh)
     zero = wall & (draft < zero_tol)
+    # which way a wall leans. On a male tool pulled along +p a wall whose outward normal
+    # tilts along +p opens as the part lifts; one tilting the other way overhangs, and the
+    # part locks on however smooth the tool is.
+    lean = np.degrees(np.arcsin(np.clip(along, -1, 1)))
+    opening = wall & (lean > zero_tol)
+    reverse = wall & (lean < -zero_tol)
     proj = float((a * cosp).sum()) / 2.0      # exact for a draw-able shape (no self-shadowing)
     uc = undercut_grid(mesh, p, pitch) if mesh.is_watertight else None
     return {
         "draft": {
             "wall_area_mm2": round(float(a[wall].sum())),
+            "opening_area_mm2": round(float(a[opening].sum())),
+            "reverse_draft_area_mm2": round(float(a[reverse].sum())),
+            "worst_reverse_deg": round(float(-lean[reverse].min()), 2) if reverse.any() else 0.0,
             "zero_draft_wall_area_mm2": round(float(a[zero & ~curved].sum())),
             "zero_draft_on_curved_mm2": round(float(a[zero & curved].sum())),
             "min_wall_draft_deg": round(float(draft[wall].min()), 2) if wall.any() else None,
             "histogram_mm2": {k: round(float(a[wall & (draft >= lo) & (draft < hi)].sum()))
                               for k, lo, hi in (("0-1", 0, 1), ("1-2", 1, 2), ("2-3", 2, 3),
                                                 ("3-5", 3, 5), ("5-10", 5, 10), ("10-45", 10, 45.01))},
-            "note": ("zero_draft_on_curved is tessellation of a fillet tangent to the pull, "
-                     "not a vertical wall — it scales with mesh density and is not a defect"),
+            "note": ("reverse_draft_area is wall that overhangs: the part grows wider away from the "
+                     "opening, so it locks onto a male tool — that is a release failure, not a "
+                     "finish problem. zero_draft_on_curved is tessellation of a fillet tangent to "
+                     "the pull, not a vertical wall: it scales with mesh density and is not a defect"),
         },
         "undercuts": uc,
         "projection": {"projected_area_mm2": round(proj),
@@ -407,7 +435,8 @@ def geom_facts(path, pull_spec):
 
 
 def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
-            blanks=((500, 500),), path=None, pull_spec="z"):
+            blanks=((500, 500),), path=None, pull_spec="z", method="male-bubble",
+            window=None, blow_share=None):
     p = pull / np.linalg.norm(pull)
     v = mesh.vertices
     along = v @ p
@@ -421,12 +450,15 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
     trim_mm = (12 + t) if trim == "auto" else float(trim)
     hm = h + trim_mm
     one_side = float(a.sum() / 2)            # shell model: one side is about half the area
-    lay = layout(fw, fl, hm, clamp, bar, blanks, one_side, t)
+    lim = METHOD_DEPTH.get(method, 0.5)
+    lay = layout(fw, fl, hm, clamp, bar, blanks, one_side, t, window)
     rec = lay[0]["recommended"]
     win = lay[0]["window_mm"]
     s_avg = (rec.get("wall_illig") or {}).get("avg_mm")
     wi = rec.get("wall_illig") or {}
     f2f1 = (wi.get("F2_mm2") / wi.get("F1_mm2")) if wi.get("F1_mm2") else None
+    if blow_share and f2f1 and not dome:          # pick the bubble from the share it should take
+        dome = (min(win) / 2.0) * math.sqrt(max(math.exp(blow_share * math.log(f2f1)) - 1.0, 0.0))
     bfrac, pre = blow_fraction(dome, min(win), f2f1)
     prof_nb = thickness_profile(mesh, p, t, s_avg)
     prof_dome = thickness_profile(mesh, p, t, s_avg, blow=bfrac) if dome else None
@@ -435,11 +467,14 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
         "pull_axis": p.round(3).tolist(),
         "height_along_pull_mm": round(h, 2),
         "footprint_mm": [round(fw, 2), round(fl, 2)],
-        "depth_to_width": round(h / fw, 3),
-        "depth_limit": {"max": 0.5, "ok": h / fw <= 0.5,
-                        "note": "limit is set by the method: male tool with a pre-blown bubble — 0.5. "
-                                "Deeper needs a plug assist (0.25 without pre-stretch, 1 with a plug, "
-                                "1.5-2 with both)"},
+        "depth_to_width": round(hm / fw, 3),
+        "depth_limit": {"method": method, "max": lim,
+                        "ok": hm / fw <= lim,
+                        "part_only": round(h / fw, 3),
+                        "note": ("ratio is taken over the MOULD height (part + trim allowance), because "
+                                 "the sheet is drawn over all of it; part_only is the part alone. "
+                                 "Limits by method: male 0.25, male with a pre-blown bubble 0.5, "
+                                 "plug assist 1.0, plug plus bubble 1.5-2")},
         "watertight": bool(mesh.is_watertight),
         "geometry": {
             "source": "built-in" + (" + mold_tool cross-check" if gf else ""),
@@ -463,7 +498,8 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
         "layout": lay,
         "profile_no_blow": prof_nb,
         "profile_with_bubble": prof_dome,
-        "measure_after_forming": measure_request(prof_dome or prof_nb),
+        "measure_after_forming": (measure_request(prof_nb) if (f2f1 and pre > f2f1)
+                                  else measure_request(prof_dome or prof_nb)),
         "bubble": {"height_mm": round(dome, 1), "rate_mm_s": blow_rate,
                    "pre_stretch": round(pre, 2), "share_of_draw": round(bfrac, 2),
                    "oversized": bool(f2f1 and pre > f2f1),
@@ -494,6 +530,20 @@ def selftest():
     if g["mold_tool"]:                       # both paths measured the same wall
         assert abs(g["mold_tool"]["draft"]["zero_draft_wall_area_mm2"] -
                    g["draft"]["zero_draft_wall_area_mm2"]) < 1, g
+    assert g["draft"]["reverse_draft_area_mm2"] == 0, g["draft"]   # straight box: no overhang
+    assert r["depth_limit"]["method"] == "male-bubble" and r["depth_limit"]["max"] == 0.5
+    assert r["depth_limit"]["part_only"] == 0.5 and r["depth_to_width"] == 0.5  # trim=0 here
+    strict = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, path=tmp, method="male")
+    assert not strict["depth_limit"]["ok"], "0.5 must fail the bare male-tool limit of 0.25"
+    # a reducing window changes the free sheet, so it changes the wall
+    red = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, window=(200, 200))
+    assert red["layout"][0]["window_mm"] == [200, 200]
+    assert red["layout"][0]["recommended"]["wall_illig"]["avg_mm"] < wi["avg_mm"], "smaller window, thinner wall"
+    assert r["layout"][0]["recommended"].get("webbing_risk"), "460 window round a 100 mm box is too much sheet"
+    assert not red["layout"][0]["recommended"].get("webbing_risk"), red["layout"][0]["recommended"]
+    # picking the bubble by share reproduces that share
+    bs = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, blow_share=0.5)
+    assert abs(bs["bubble"]["share_of_draw"] - 0.5) < 0.02, bs["bubble"]
     # a mushroom cannot be drawn along z: the cap overhangs the stem by 100x100 - 40x40
     cap = trimesh.creation.box([100, 100, 20]); cap.apply_translation([0, 0, 40])
     stem = trimesh.creation.box([40, 40, 40]); stem.apply_translation([0, 0, 10])
@@ -544,6 +594,11 @@ def main():
                    help="blow time in seconds; converted to height with --blow-rate")
     m.add_argument("--blow-rate", type=float, default=250.0, dest="blow_rate",
                    help="bubble growth rate, mm/s — machine specific, calibrate it")
+    m.add_argument("--blow-share", type=float, default=None, dest="blow_share",
+                   help="pick the bubble so it takes this share (0..1) of the total draw")
+    m.add_argument("--window", default=None, help="clamp window WxH in mm, e.g. a reducing window 270x230")
+    m.add_argument("--method", default="male-bubble", choices=sorted(METHOD_DEPTH),
+                   help="forming method — it sets the depth limit (default male-bubble, 0.5)")
     sp.add_parser("selftest")
     a = ap.parse_args()
     if a.cmd == "selftest":
@@ -555,7 +610,9 @@ def main():
     blanks = [blank_size(s) for s in (a.blank or ["500x500"])]
     dome = a.dome if a.dome else (a.blow_time * a.blow_rate if a.blow_time else 0.0)
     print(json.dumps(measure(mesh, axis(a.pull), a.t, a.clamp, a.trim, a.bar, dome, a.blow_rate,
-                             blanks=blanks, path=a.mesh, pull_spec=a.pull), indent=1))
+                             blanks=blanks, path=a.mesh, pull_spec=a.pull, method=a.method,
+                             window=blank_size(a.window) if a.window else None,
+                             blow_share=a.blow_share), indent=1))
 
 
 if __name__ == "__main__":

@@ -41,10 +41,14 @@ then plan for vent marks on it.
 ## 3. Radii
 
 - **Default outside radius 1.5 t.** Never below `t` anywhere the sheet stretches.
-- **Ladder by local draw** (the draw *at that spot*, not of the whole part):
-  below 2:1 -> 0.5 t; 2:1 to 3:1 -> 0.5 to 1 t; above 3:1 -> 1.5 t.
+- **Ladder by local draw** (the draw *at that spot*, not of the whole part). Illig gives
+  below 2:1 -> 0.5 t; 2:1 to 3:1 -> 0.5 to 1 t; above 3:1 -> 1.5 t. The tool implements a
+  stricter reading — below 1.2 -> 0.5 t; 1.2 to 3 -> 1 t; above 3 -> 1.5 t — taking the
+  upper end of the middle band and applying the floor, because a sheet that stretches at
+  all will not lay into half its own thickness.
 - **Bottom corners and three-way corners: 3 t**, because the sheet arrives there last
-  and is thinnest.
+  and is thinnest. The ladder above tops out at 1.5 t, so this one is a hand check — the
+  tool will not raise it.
 - A corner that will not form is usually not a radius problem first. Check venting at
   the corner before enlarging the radius: trapped air is the more common cause.
 - Cross-industry agreement on the same numbers: injection moulding specifies an inside

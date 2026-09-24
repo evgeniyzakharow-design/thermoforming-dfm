@@ -11,7 +11,7 @@ low-volume plastic housings are actually made. This fills that gap.
 ## What it does
 
 ```bash
-python skills/thermoforming-dfm/scripts/vf_tool.py measure part.stl --pull z --t 3 --blow-time 0.4
+python3 skills/thermoforming-dfm/scripts/vf_tool.py measure part.stl --pull z --t 3 --blow-share 0.5
 ```
 
 - **Wall thickness by Illig's law** `s = t * F1/F2` — fed by the free sheet, not by the
@@ -27,12 +27,18 @@ python skills/thermoforming-dfm/scripts/vf_tool.py measure part.stl --pull z --t
   spot reported.
 - **Depth limit set by the method**: 0.25 for a bare male tool, 0.5 with a bubble, 1 with
   a plug assist.
-- **Nesting on the blank**: parts per sheet with and without divider bars, and the wall
-  that follows from each layout.
+- **Nesting on the blank**: parts per sheet with and without divider bars, the wall that
+  follows from each layout, and a warning when the mould sits more than 1 H from the
+  frame — too much spare sheet is the first cause of webbing. `--window` models a
+  reducing window and shows what it costs in wall thickness.
+- **Depth limit by method**: bare male tool 0.25, with a pre-blown bubble 0.5, plug assist
+  1.0, taken over the mould height rather than the part's.
 - **Three points to measure on the first formed part**, with expected values — the loop
   that turns the estimate into a calibrated calculation.
 
-- **Draft, undercuts and projected area** measured in the same pass: facets on fillets
+- **Draft split by which way the wall leans.** Wall that overhangs locks the part onto a
+  male tool no matter how smooth it is — a release failure, and the one a magnitude-only
+  draft check misses. Plus undercuts and projected area measured in the same pass: facets on fillets
   tangent to the pull are reported apart from real vertical walls, undercuts come from
   counting how often a line along the pull crosses the solid, and the vacuum force on the
   mould base follows from the projected area.
@@ -76,7 +82,7 @@ project. Nothing in the skill depends on the plugin wrapper.
 
 ```bash
 pip install -r skills/thermoforming-dfm/requirements.txt
-python skills/thermoforming-dfm/scripts/vf_tool.py selftest
+python3 skills/thermoforming-dfm/scripts/vf_tool.py selftest
 ```
 
 Python 3.11+, `trimesh`, `numpy`, `scipy` (`lxml` for .3mf). Export STEP to STL first.

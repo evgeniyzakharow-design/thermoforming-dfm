@@ -12,20 +12,45 @@ Produce a process-specific review of a part or a mould for vacuum forming. This 
 guided review, not a certification: report what was measured, what was assumed, and what
 could not be checked.
 
-Read `${CLAUDE_SKILL_DIR}/references/rules.md` before comparing anything — the numbers, and the reasons
+Read `references/rules.md` before comparing anything — the numbers, and the reasons
 behind them, live there. For a design drawn for 3D printing, start from
-`${CLAUDE_SKILL_DIR}/references/print-to-forming.md` instead of listing violations one by one.
+`references/print-to-forming.md` instead of listing violations one by one.
 
 ## Measure, do not eyeball
 
+Paths below are relative to this skill's directory. Use `python3` if `python` is not on
+PATH, and check the environment once before trusting any number:
+
 ```bash
-python "${CLAUDE_SKILL_DIR}/scripts/vf_tool.py" measure part.stl --pull z --t 3 [--blank 500x500] [--blow-time 0.4]
+pip install -r requirements.txt          # trimesh, numpy, scipy
+python3 scripts/vf_tool.py selftest      # must print: selftest ok
+python3 scripts/vf_tool.py measure part.stl --pull z --t 3 \
+        [--method male|male-bubble|plug|plug-bubble] [--blank 500x500] [--window 270x230] \
+        [--blow-share 0.5 | --blow-time 0.2 | --dome 50]
 ```
 
+**Ask for the method before reading the depth verdict.** `--method` sets the limit:
+bare male tool 0.25, male with a pre-blown bubble 0.5 (default), plug assist 1.0, both
+1.5. The ratio is taken over the *mould* height — part plus trim allowance — because the
+sheet is drawn over all of it; the part-only figure is reported beside it.
+
+**Ask whether the mesh is the part or the tool.** The tool is made oversize by the
+shrinkage; if the mesh already is the tool, do not add it twice. And ask what the tool is
+made of: wood or MDF needs 20-25 % more draft than metal.
+
 The tool reports facts only: height and footprint, depth-to-width against the method
-limit, required radius by zone with the tightest spot, layout on the blank, average wall
-by Illig's law with its +-30 % band, the thickness profile along the height, the bubble's
-share of the draw, and three points to measure on the first formed part.
+limit, draft split into wall that opens and wall that **overhangs** (reverse draft locks
+the part onto a male tool — that is a release failure, not a finish problem), undercuts,
+projected area and the vacuum force from it, required radius by zone with the tightest
+spot, layout on the blank including a webbing warning when the mould sits further than
+1 H from the frame, average wall by Illig's law with its +-30 % band, the thickness
+profile along the height, the bubble's share of the draw, and three points to measure on
+the first formed part.
+
+Two rules from `references/rules.md` the tool does **not** enforce — check them by hand:
+bottom and three-way corners want **3 t**, where the ladder tops out at 1.5 t; and the
+vent count, where the total hole area must exceed the vacuum port (count = port area
+divided by 1.77 mm2 for 1.5 mm holes).
 
 **The skill stands alone.** Draft, undercuts and projected area are measured here:
 draft per face with facets on fillets tangent to the pull reported separately (they are
