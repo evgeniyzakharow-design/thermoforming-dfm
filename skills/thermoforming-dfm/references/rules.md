@@ -202,11 +202,20 @@ was not dry enough.** Above 80 C is pointless; the glass transition of ABS is 10
   `1 + (h/R)^2`; its share of the total draw is `ln(pre) / ln(F2/F1)`.
 - With a bubble, first contact happens at a *point* inside the dome and rolls outward,
   much later than a flat sheet landing on the whole top face.
-- Industrial machines limit bubble height with a photocell rather than by time, and
-  manufacturers themselves call manual time settings sloppy. If your machine sets it by
-  time, that time is a calibration knob: set it from the calculation and correct it in
-  0.1 s steps over two trial parts — thin top means the bubble was too big, thin bottom
-  corners mean it was too small.
+- **Height is the physical quantity; seconds are not.** The calculation needs a bubble
+  height. Machines are set in seconds, and the same second gives a different height on
+  every machine — blower, window size, sheet thickness and sheet temperature all change
+  it, and the growth is not linear. So work in millimetres and convert only for your own
+  machine.
+- **Measuring your machine's growth rate, once.** Heat a sheet as you would for forming,
+  blow with the table down, cut the blow at a known time, and measure the apex height
+  above the frame with a rule or a rod across the frame. Two or three points across your
+  working range (say 0.2 / 0.4 / 0.6 s) give the rate in mm/s near that range. Machines
+  with a photocell skip this entirely — they limit the bubble by measured height, and
+  manufacturers themselves call manual time settings sloppy.
+- Whatever the rate says, it is a starting value: correct it in 0.1 s steps over two
+  trial parts — thin top means the bubble was too big, thin bottom corners mean it was
+  too small.
 
 ## Sources
 

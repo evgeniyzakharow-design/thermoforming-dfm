@@ -21,7 +21,9 @@ python3 skills/thermoforming-dfm/scripts/vf_tool.py measure part.stl --pull z --
   laid out along the sheet's geodesic path from the first point of contact, an idea
   borrowed from kinematic draping of composites.
 - **Pre-blown bubble as a number**: areal pre-stretch `1 + (h/R)^2` and its share of the
-  total draw. With a bubble, contact starts at a point and rolls outward, which is why
+  total draw. The input is a height in millimetres, or the share of the draw it should
+  take — never seconds, because the same second grows a different bubble on every
+  machine. With a bubble, contact starts at a point and rolls outward, which is why
   the profile flattens.
 - **Required radius by local draw**, not one radius for the whole part, with the tightest
   spot reported.

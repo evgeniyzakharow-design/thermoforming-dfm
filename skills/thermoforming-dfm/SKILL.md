@@ -34,6 +34,13 @@ bare male tool 0.25, male with a pre-blown bubble 0.5 (default), plug assist 1.0
 1.5. The ratio is taken over the *mould* height — part plus trim allowance — because the
 sheet is drawn over all of it; the part-only figure is reported beside it.
 
+**The bubble is given as a height, not as a time.** `--dome` in millimetres, or
+`--blow-share 0..1` to let the part's own draw pick it. Seconds are machine-specific —
+the same second grows a different bubble on a different blower — so `--blow-time` only
+works together with `--blow-rate` measured on that machine, and the tool refuses the
+combination otherwise rather than inventing a rate. The procedure for measuring the rate
+once is in `references/rules.md`.
+
 **Ask whether the mesh is the part or the tool.** The tool is made oversize by the
 shrinkage; if the mesh already is the tool, do not add it twice. And ask what the tool is
 made of: wood or MDF needs 20-25 % more draft than metal.

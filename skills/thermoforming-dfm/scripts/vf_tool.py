@@ -463,7 +463,7 @@ def cross_check(bi, gf, tol=0.02):
                      "fillets tangent to the pull")}
 
 
-def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
+def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=None,
             blanks=((500, 500),), path=None, pull_spec="z", method="male-bubble",
             window=None, blow_share=None):
     p = pull / np.linalg.norm(pull)
@@ -525,13 +525,19 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
         "profile_with_bubble": prof_dome,
         "measure_after_forming": (measure_request(prof_nb) if (f2f1 and pre > f2f1)
                                   else measure_request(prof_dome or prof_nb)),
-        "bubble": {"height_mm": round(dome, 1), "rate_mm_s": blow_rate,
+        "bubble": {"height_mm": round(dome, 1),
+                   "blow_time_s": (round(dome / blow_rate, 2) if blow_rate else None),
+                   "rate_mm_s": blow_rate,
                    "pre_stretch": round(pre, 2), "share_of_draw": round(bfrac, 2),
                    "oversized": bool(f2f1 and pre > f2f1),
-                   "note": ("pre_stretch above the total draw F2/F1 means the bubble alone stretches "
-                            "the sheet more than this part needs: the top comes out thin and the profile "
-                            "flattens artificially. Shorten the blow time." if (f2f1 and pre > f2f1)
-                            else "bubble takes this share of the draw before the sheet touches the tool")}
+                   "note": (("pre_stretch above the total draw F2/F1 means the bubble alone stretches "
+                             "the sheet more than this part needs: the top comes out thin and the profile "
+                             "flattens artificially. Blow a smaller bubble." if (f2f1 and pre > f2f1)
+                             else "bubble takes this share of the draw before the sheet touches the tool")
+                            + (" blow_time_s is only as good as the rate you gave: growth is not linear and "
+                               "every machine differs — measure yours." if blow_rate else
+                               " Height is the input; converting it to a blow time needs your machine's "
+                               "growth rate (--blow-rate), which is machine-specific."))}
         if dome else None,
     }
 
@@ -566,6 +572,11 @@ def selftest():
     assert red["layout"][0]["recommended"]["wall_illig"]["avg_mm"] < wi["avg_mm"], "smaller window, thinner wall"
     assert r["layout"][0]["recommended"].get("webbing_risk"), "460 window round a 100 mm box is too much sheet"
     assert not red["layout"][0]["recommended"].get("webbing_risk"), red["layout"][0]["recommended"]
+    # height is the machine-independent input: no rate given, no time reported
+    nb = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, dome=40)
+    assert nb["bubble"]["blow_time_s"] is None and nb["bubble"]["height_mm"] == 40
+    assert measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, dome=40,
+                   blow_rate=200)["bubble"]["blow_time_s"] == 0.2
     # picking the bubble by share reproduces that share
     bs = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, blow_share=0.5)
     assert abs(bs["bubble"]["share_of_draw"] - 0.5) < 0.02, bs["bubble"]
@@ -617,8 +628,9 @@ def main():
     m.add_argument("--dome", type=float, default=0.0, help="bubble height, mm (0 = no pre-blow)")
     m.add_argument("--blow-time", type=float, default=0.0, dest="blow_time",
                    help="blow time in seconds; converted to height with --blow-rate")
-    m.add_argument("--blow-rate", type=float, default=250.0, dest="blow_rate",
-                   help="bubble growth rate, mm/s — machine specific, calibrate it")
+    m.add_argument("--blow-rate", type=float, default=None, dest="blow_rate",
+                   help="bubble growth rate of YOUR machine, mm/s — no default, measure it once "
+                        "(see references/rules.md, 'Pre-blown bubble')")
     m.add_argument("--blow-share", type=float, default=None, dest="blow_share",
                    help="pick the bubble so it takes this share (0..1) of the total draw")
     m.add_argument("--window", default=None, help="clamp window WxH in mm, e.g. a reducing window 270x230")
@@ -633,6 +645,12 @@ def main():
     except Exception as e:
         print(json.dumps({"error": f"could not load mesh: {e}"})); sys.exit(1)
     blanks = [blank_size(s) for s in (a.blank or ["500x500"])]
+    if a.blow_time and not a.blow_rate:
+        print(json.dumps({"error": "--blow-time needs --blow-rate: seconds only become a bubble height "
+                                   "through your machine's growth rate, and there is no sane default. "
+                                   "Give the height directly (--dome, mm), or let the part choose it "
+                                   "(--blow-share 0..1), or measure your rate once and pass it."}))
+        sys.exit(2)
     dome = a.dome if a.dome else (a.blow_time * a.blow_rate if a.blow_time else 0.0)
     print(json.dumps(measure(mesh, axis(a.pull), a.t, a.clamp, a.trim, a.bar, dome, a.blow_rate,
                              blanks=blanks, path=a.mesh, pull_spec=a.pull, method=a.method,
