@@ -1,22 +1,25 @@
 ---
 name: thermoforming-dfm
 description: Design-for-manufacturing review of a part or a mould for vacuum forming / thermoforming — draft, radii by local draw, depth limit by method, wall thickness by Illig's law, undercuts, webbing, venting, how many parts fit a blank, and what to measure on the first formed part. Use when asked whether a part (.stl/.3mf/.step) can be vacuum formed or thermoformed, how thin the wall will get, how many parts fit a sheet, how to turn a 3D-printed design into a formable one, or for a thermoforming DFM review.
+license: MIT
 ---
 
 # Thermoforming DFM review
+
+Provenance: maintained in [evgeniyzakharow-design/thermoforming-dfm](https://github.com/evgeniyzakharow-design/thermoforming-dfm).
 
 Produce a process-specific review of a part or a mould for vacuum forming. This is a
 guided review, not a certification: report what was measured, what was assumed, and what
 could not be checked.
 
-Read `references/rules.md` before comparing anything — the numbers, and the reasons
+Read `${CLAUDE_SKILL_DIR}/references/rules.md` before comparing anything — the numbers, and the reasons
 behind them, live there. For a design drawn for 3D printing, start from
-`references/print-to-forming.md` instead of listing violations one by one.
+`${CLAUDE_SKILL_DIR}/references/print-to-forming.md` instead of listing violations one by one.
 
 ## Measure, do not eyeball
 
 ```bash
-python scripts/vf_tool.py measure part.stl --pull z --t 3 [--blank 500x500] [--blow-time 0.4]
+python "${CLAUDE_SKILL_DIR}/scripts/vf_tool.py" measure part.stl --pull z --t 3 [--blank 500x500] [--blow-time 0.4]
 ```
 
 The tool reports facts only: height and footprint, depth-to-width against the method

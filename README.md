@@ -70,7 +70,7 @@ Or as a plain skill — copy `skills/thermoforming-dfm/` into `.claude/skills/` 
 project. Nothing in the skill depends on the plugin wrapper.
 
 ```bash
-pip install -r requirements.txt
+pip install -r skills/thermoforming-dfm/requirements.txt
 python skills/thermoforming-dfm/scripts/vf_tool.py selftest
 ```
 
