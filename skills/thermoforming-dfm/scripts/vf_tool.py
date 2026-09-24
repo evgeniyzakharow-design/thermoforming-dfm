@@ -460,10 +460,20 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0, draped=None
     lean = np.degrees(np.arcsin(np.clip(along, -1, 1)))
     opening = wall & (lean > zero_tol)
     reverse = wall & (lean < -zero_tol)
-    proj = float((a * cosp).sum()) / 2.0      # exact for a draw-able shape (no self-shadowing)
+    # Projected area: the ray grid gives the silhouette directly and is right for a solid
+    # and for a shell alike. The closed-form sum |n.p|*A/2 counts both skins of a shell,
+    # so it is only the fallback when rays are unavailable.
+    proj_note = "silhouette from the ray grid"
+    proj = None
     # grid step scaled to the part: 2 mm is coarse on a 30 mm part and wasteful on a 600 mm one
     span = float(min(np.ptp(mesh.vertices, axis=0)))
     uc = undercut_grid(mesh, p, max(0.5, min(pitch, span / 40.0))) if mesh.is_watertight else None
+    if uc:
+        proj = float(uc["footprint_mm2"])
+    else:
+        proj = float((a * cosp).sum()) / 2.0
+        proj_note = "sum |n.p|*area/2 — no ray grid available; counts both skins of a shell"
+
     return {
         "draft": {
             "wall_area_mm2": round(float(a[wall].sum())),
@@ -489,8 +499,7 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0, draped=None
                      "the pull, not a vertical wall: it scales with mesh density and is not a defect"),
         },
         "undercuts": uc,
-        "projection": {"projected_area_mm2": round(proj),
-                       "note": "sum of |n.p| * area / 2; exact unless the shape shadows itself"},
+        "projection": {"projected_area_mm2": round(proj), "note": proj_note},
     }
 
 
