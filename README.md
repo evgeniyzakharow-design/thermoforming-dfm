@@ -57,17 +57,19 @@ test part they agree to within 3 mm2 of projected area.
 
 ## Example
 
-A 200 x 200 x 60 box, 3 mm ABS, 500 x 500 blank, 0.15 s of pre-blow:
+A 200 x 200 x 60 box, 3 mm ABS, 500 x 500 blank, a 37.5 mm bubble:
 
 ```
-depth_to_width   0.30            limit for this method 0.5 — ok
-parts per blank  1               F1 202 500 mm2, F2 226 500 mm2
-average wall     2.68 mm         band 1.88 … 3.49
-bubble           37.5 mm         pre-stretch 1.03, 24 % of the total draw
-profile          2.81 mm on top  →  2.54 mm at the base
-thinnest         2.26 mm         at a bottom corner
-vacuum force     360 kgf         projected area x 9000 kgf/m2
+depth_to_width   0.375           limit for this method 0.5 — ok
+parts per blank  1               F1 202 500 mm2, F2 250 500 mm2
+draped area      88 000 mm2      what the sheet actually covers, measured
+average wall     2.43 mm         band 1.70 … 3.15
+bubble           37.5 mm         pre-stretch 1.03, 13 % of the total draw
+profile          2.55 mm on top  →  2.29 mm at the base
+thinnest         2.01 mm         at a bottom corner
+vacuum force     358 kgf         projected area x 9000 kgf/m2
 zero draft       48 000 mm2      the box has vertical walls — draft them
+webbing          warning         mould sits 2.7 H from the frame: too much spare sheet
 ```
 
 Then measure three points on the first formed part and the estimate stops being an
