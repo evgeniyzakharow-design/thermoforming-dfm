@@ -1,4 +1,6 @@
 trimesh>=4.0
 numpy>=1.24
 scipy>=1.10
-lxml>=5.0
+rtree>=1.0        # trimesh needs it for the ray queries: draped area, undercuts, silhouette
+lxml>=5.0         # .3mf files
+# optional: embreex — same ray queries, an order of magnitude faster on fine meshes

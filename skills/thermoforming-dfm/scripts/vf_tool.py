@@ -467,7 +467,10 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0, draped=None
     proj = None
     # grid step scaled to the part: 2 mm is coarse on a 30 mm part and wasteful on a 600 mm one
     span = float(min(np.ptp(mesh.vertices, axis=0)))
-    uc = undercut_grid(mesh, p, max(0.5, min(pitch, span / 40.0))) if mesh.is_watertight else None
+    try:
+        uc = undercut_grid(mesh, p, max(0.5, min(pitch, span / 40.0))) if mesh.is_watertight else None
+    except Exception:                        # no ray backend (rtree missing) — say so, do not crash
+        uc = None
     if uc:
         proj = float(uc["footprint_mm2"])
     else:
@@ -498,7 +501,8 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0, draped=None
                      "— also a release failure, not a finish problem. zero_draft_on_curved is tessellation of a fillet tangent to "
                      "the pull, not a vertical wall: it scales with mesh density and is not a defect"),
         },
-        "undercuts": uc,
+        "undercuts": uc or {"note": "NOT MEASURED: needs a watertight mesh and the rtree package "
+                                    "(pip install -r requirements.txt)"},
         "projection": {"projected_area_mm2": round(proj), "note": proj_note},
     }
 
@@ -673,7 +677,7 @@ def selftest():
     assert g["draft"]["zero_draft_wall_area_mm2"] == 20000, g["draft"]
     assert g["draft"]["zero_draft_on_curved_mm2"] == 0, g["draft"]
     assert g["projection"]["projected_area_mm2"] == 10000 and g["vacuum_force_kgf"] == 90, g
-    assert g["undercuts"]["undercut_area_mm2"] == 0, g["undercuts"]
+    assert g["undercuts"].get("undercut_area_mm2") == 0, g["undercuts"]
     cc = g["cross_check"]                    # speaks only when the two implementations differ
     assert cc["agrees"] in (True, None), cc
     assert cc["differences"] is None, cc
