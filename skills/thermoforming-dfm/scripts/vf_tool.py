@@ -386,7 +386,9 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0):
     opening = wall & (lean > zero_tol)
     reverse = wall & (lean < -zero_tol)
     proj = float((a * cosp).sum()) / 2.0      # exact for a draw-able shape (no self-shadowing)
-    uc = undercut_grid(mesh, p, pitch) if mesh.is_watertight else None
+    # grid step scaled to the part: 2 mm is coarse on a 30 mm part and wasteful on a 600 mm one
+    span = float(min(np.ptp(mesh.vertices, axis=0)))
+    uc = undercut_grid(mesh, p, max(0.5, min(pitch, span / 40.0))) if mesh.is_watertight else None
     return {
         "draft": {
             "wall_area_mm2": round(float(a[wall].sum())),
@@ -464,8 +466,8 @@ def cross_check(bi, gf, tol=0.02):
 
 
 def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=None,
-            blanks=((500, 500),), path=None, pull_spec="z", method="male-bubble",
-            window=None, blow_share=None):
+            blanks=((500, 500),), path=None, pull_spec="z", method="male",
+            window=None, blow_share=None, given=()):
     p = pull / np.linalg.norm(pull)
     v = mesh.vertices
     along = v @ p
@@ -479,7 +481,10 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=None,
     trim_mm = (12 + t) if trim == "auto" else float(trim)
     hm = h + trim_mm
     one_side = float(a.sum() / 2)            # shell model: one side is about half the area
-    lim = METHOD_DEPTH.get(method, 0.5)
+    promoted = method == "male" and bool(dome or blow_share)
+    if promoted:                                     # a bubble was given, so the method has one
+        method = "male-bubble"
+    lim = METHOD_DEPTH[method]
     lay = layout(fw, fl, hm, clamp, bar, blanks, one_side, t, window)
     rec = lay[0]["recommended"]
     win = lay[0]["window_mm"]
@@ -516,6 +521,18 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=None,
                      "its fixings for that. Measure the FORMED shape: slots and holes that are milled "
                      "after forming read as zero draft and undercuts."),
         },
+        "assumptions": {k: v for k, v in (
+            ("blank_mm", "assumed %s — layout and the free sheet F1 come from it, so every wall number does"
+                         % ([list(b) for b in blanks],) if "blank" not in given else None),
+            ("clamp_mm", "assumed %g mm per side — it sets the window, and F1 with it" % clamp
+                         if ("clamp" not in given and "window" not in given) else None),
+            ("bar_mm", "assumed %g mm — only affects the with_divider variant" % bar if "bar" not in given else None),
+            ("method", ("read as %s (limit %g) because a bubble was given" % (method, lim) if promoted
+                        else "assumed the strictest method (%s, limit %g) — pass --method if the machine "
+                             "has a plug assist or a pre-blow" % (method, lim))
+                       if "method" not in given else None),
+            ("trim_mm", "auto: 12 + sheet thickness" if "trim" not in given else None),
+        ) if v},
         "sheet": {"t_mm": t, "one_side_area_mm2": round(one_side),
                   "note": "wall comes from layout[].wall_illig: s = t*F1/F2, so it depends on the layout"},
         "mold": {"trim_allowance_mm": trim_mm, "mold_height_mm": round(hm, 2)},
@@ -548,7 +565,7 @@ def selftest():
     box.export(tmp)
     r = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, path=tmp, pull_spec="z")
     assert r["height_along_pull_mm"] == 50 and r["footprint_mm"] == [100, 100]
-    assert r["depth_to_width"] == 0.5 and r["depth_limit"]["ok"]
+    assert r["depth_to_width"] == 0.5      # trim=0 here, so mould height equals part height
     assert len(r["measure_after_forming"]["points"]) == 3
     wi = r["layout"][0]["recommended"]["wall_illig"]
     assert wi and 0 < wi["avg_mm"] <= r["sheet"]["t_mm"], wi
@@ -562,10 +579,14 @@ def selftest():
     assert cc["agrees"] in (True, None), cc
     assert cc["differences"] is None, cc
     assert g["draft"]["reverse_draft_area_mm2"] == 0, g["draft"]   # straight box: no overhang
-    assert r["depth_limit"]["method"] == "male-bubble" and r["depth_limit"]["max"] == 0.5
+    assert r["depth_limit"]["method"] == "male" and r["depth_limit"]["max"] == 0.25   # strictest by default
+    assert not r["depth_limit"]["ok"], "0.5 deep must fail a bare male tool"
+    assert set(r["assumptions"]) >= {"blank_mm", "clamp_mm", "method"}, r["assumptions"]
     assert r["depth_limit"]["part_only"] == 0.5 and r["depth_to_width"] == 0.5  # trim=0 here
-    strict = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, path=tmp, method="male")
-    assert not strict["depth_limit"]["ok"], "0.5 must fail the bare male-tool limit of 0.25"
+    soft = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, path=tmp, method="male-bubble")
+    assert soft["depth_limit"]["ok"] and soft["depth_limit"]["max"] == 0.5
+    # giving a bubble promotes the method rather than silently comparing against the strict limit
+    assert measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, dome=40)["depth_limit"]["method"] == "male-bubble"
     # a reducing window changes the free sheet, so it changes the wall
     red = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, window=(200, 200))
     assert red["layout"][0]["window_mm"] == [200, 200]
@@ -620,7 +641,7 @@ def main():
     m = sp.add_parser("measure")
     m.add_argument("mesh")
     m.add_argument("--pull", default="z", help="direction the part comes off the tool: z, -z, y...")
-    m.add_argument("--t", type=float, default=3.0, help="sheet thickness, mm")
+    m.add_argument("--t", type=float, required=True, help="sheet thickness, mm — required, every wall number scales with it")
     m.add_argument("--clamp", type=float, default=25.0, help="clamped rim per side, mm")
     m.add_argument("--trim", default="auto", help="height added for trimming: auto = 12 + t")
     m.add_argument("--blank", action="append", default=None, help="blank size WxH in mm, repeatable (default 500x500)")
@@ -634,8 +655,9 @@ def main():
     m.add_argument("--blow-share", type=float, default=None, dest="blow_share",
                    help="pick the bubble so it takes this share (0..1) of the total draw")
     m.add_argument("--window", default=None, help="clamp window WxH in mm, e.g. a reducing window 270x230")
-    m.add_argument("--method", default="male-bubble", choices=sorted(METHOD_DEPTH),
-                   help="forming method — it sets the depth limit (default male-bubble, 0.5)")
+    m.add_argument("--method", default="male", choices=sorted(METHOD_DEPTH),
+                   help="forming method — it sets the depth limit. Default is the strictest (male, 0.25); "
+                        "giving a bubble promotes it to male-bubble (0.5)")
     sp.add_parser("selftest")
     a = ap.parse_args()
     if a.cmd == "selftest":
@@ -652,10 +674,12 @@ def main():
                                    "(--blow-share 0..1), or measure your rate once and pass it."}))
         sys.exit(2)
     dome = a.dome if a.dome else (a.blow_time * a.blow_rate if a.blow_time else 0.0)
+    given = {n for n in ("t", "clamp", "trim", "blank", "bar", "method", "window")
+             if any(f"--{n}" == x or x.startswith(f"--{n}=") for x in sys.argv)}
     print(json.dumps(measure(mesh, axis(a.pull), a.t, a.clamp, a.trim, a.bar, dome, a.blow_rate,
                              blanks=blanks, path=a.mesh, pull_spec=a.pull, method=a.method,
                              window=blank_size(a.window) if a.window else None,
-                             blow_share=a.blow_share), indent=1))
+                             blow_share=a.blow_share, given=given), indent=1))
 
 
 if __name__ == "__main__":

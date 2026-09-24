@@ -29,9 +29,10 @@ python3 scripts/vf_tool.py measure part.stl --pull z --t 3 \
         [--blow-share 0.5 | --blow-time 0.2 | --dome 50]
 ```
 
-**Ask for the method before reading the depth verdict.** `--method` sets the limit:
-bare male tool 0.25, male with a pre-blown bubble 0.5 (default), plug assist 1.0, both
-1.5. The ratio is taken over the *mould* height — part plus trim allowance — because the
+**Sheet thickness is required** — every wall number scales with it, so the tool will not
+guess. **The method defaults to the strictest** (bare male tool, limit 0.25); giving a
+bubble promotes it to 0.5, a plug assist has to be stated. Limits: male 0.25, male with a
+pre-blown bubble 0.5, plug assist 1.0, plug plus bubble 1.5. The ratio is taken over the *mould* height — part plus trim allowance — because the
 sheet is drawn over all of it; the part-only figure is reported beside it.
 
 **The bubble is given as a height, not as a time.** `--dome` in millimetres, or
@@ -40,6 +41,12 @@ the same second grows a different bubble on a different blower — so `--blow-ti
 works together with `--blow-rate` measured on that machine, and the tool refuses the
 combination otherwise rather than inventing a rate. The procedure for measuring the rate
 once is in `references/rules.md`.
+
+**Read the `assumptions` block out loud in the review.** Everything the user did not
+state — blank size, clamped rim, divider bar, method, trim allowance — is listed there
+with what it scales. Blank and clamp set the free sheet F1, so they move every wall
+number; an unstated blank is the most common way a confident answer turns out to be for
+somebody else's machine.
 
 **Ask whether the mesh is the part or the tool.** The tool is made oversize by the
 shrinkage; if the mesh already is the tool, do not add it twice. And ask what the tool is
