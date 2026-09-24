@@ -408,24 +408,16 @@ def undercut_grid(mesh, p, pitch=2.0):
 
 
 def draped_mask(mesh, p, eps=0.01):
-    """Which faces the sheet can reach: a ray leaving the face along the pull escapes."""
+    """Which faces the sheet can reach: a ray leaving the face along the pull escapes.
+
+    That drops the base a solid stands on and the inner skin of a shell, and keeps the top
+    and the walls in both cases, so the answer does not depend on whether the file is a
+    closed solid or a double-skinned model. The shortcut this replaces was total area / 2,
+    true only for a shell: on a solid box 100x100x50 it gives 20 000 mm2 where the sheet
+    covers 30 000, and that error lands straight in F2 and in the predicted wall.
+    """
     o = mesh.triangles_center + mesh.face_normals * eps
     return ~mesh.ray.intersects_any(o, np.tile(p, (len(o), 1)))
-
-
-def draped_area(mesh, p, eps=0.01):
-    """Area of the surface the sheet actually lies on, whatever the model is.
-
-    A face is draped if a ray leaving it along the pull escapes: nothing of the part is
-    above it. That drops the base a solid stands on and the inner skin of a shell, and it
-    keeps the top and the walls in both cases — so the answer no longer depends on whether
-    the file is a closed solid or a double-skinned shell.
-
-    The shortcut this replaces was total area / 2, true only for a shell. On a solid box
-    100x100x50 it gives 20 000 mm2 where the sheet covers 30 000, and since this feeds F2
-    the error lands straight in the predicted wall, on the thick side.
-    """
-    return float(mesh.area_faces[draped_mask(mesh, p, eps)].sum())
 
 
 def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0, draped=None):

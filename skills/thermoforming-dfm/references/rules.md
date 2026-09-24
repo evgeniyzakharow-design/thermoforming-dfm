@@ -60,10 +60,12 @@ then plan for vent marks on it.
 
 ## 4. Depth
 
-- **Depth of a cavity or a pocket: no more than 0.5 of its smallest width.**
-- The limit is set by the *method*, not by the material (Sheryshev): male tool with no
-  pre-stretch 0.25; **male tool with a pre-blown bubble 0.5**; with a plug assist 1;
-  with both 1.5 to 2.
+- **The depth limit is set by the method, not by the material** (Sheryshev). Depth of a
+  cavity or a pocket against its smallest width: male tool with no pre-stretch **0.25**;
+  male tool with a pre-blown bubble **0.5**; with a plug assist **1**; with both 1.5 to 2.
+- Take the ratio over the *mould* height — the part plus the trim allowance — because the
+  sheet is drawn over all of it. A part that passes on its own height can fail on the
+  mould's.
 - Guides that quote 0.75 are usually quoting a female tool with a plug assist.
 - The same wall shows up in neighbouring processes: in deep drawing of sheet metal the
   limiting first-draw coefficient is about 0.55. Every drawing process has a ceiling per
