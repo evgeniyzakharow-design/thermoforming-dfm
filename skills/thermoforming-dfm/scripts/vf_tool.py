@@ -94,9 +94,15 @@ def layout(w, l, hm, clamp, bar, blanks, one_side=None, t=3.0, window=None):
                                    (max(fits(win[i], d, edge, gap), 1) - 1) * gap)) / 2.0
                         for i, d in ((0, w), (1, l)))
             row[name] = {"parts": n, "gap_mm": round(gap, 1), "edge_mm": round(edge, 1),
+                         "fits": bool(n),
                          "actual_edge_mm": round(spare, 1),
                          "actual_edge_in_H": round(spare / hm, 2) if hm else None}
-            if hm and spare > hm:
+            if not n:
+                row[name]["does_not_fit"] = (
+                    "part %.0f x %.0f plus %.0f mm to the frame on each side does not fit the %.0f x %.0f "
+                    "window: use a bigger blank, or a shallower part — the clearance scales with height"
+                    % (w, l, edge, win[0], win[1]))
+            if hm and n and spare > hm:
                 row[name]["webbing_risk"] = (
                     "mould sits %.1f H from the frame, outside the 0.3-1.0 H band: too much spare "
                     "sheet is the first cause of webbing. Use a reducing window about %d x %d mm "
@@ -358,20 +364,22 @@ def measure_request(prof):
     }
 
 
-def curved_faces(mesh, smooth_deg=20.0):
-    """Faces that lie on a curved surface rather than a flat one.
+def tangent_band(mesh, draft, wall, zero_tol=0.5, rise=2.0):
+    """Zero-draft faces that sit on a surface merely passing through vertical.
 
-    A face on a plane meets its neighbours at ~0 deg; on a fillet or a cylinder at a few
-    degrees; across a sharp edge at much more. Faces in between are the curved ones. This
-    matters for draft: a curved surface is tangent to the pull along a *line*, so the
-    facets near that line read as zero draft no matter how fine the mesh is — that is
-    tessellation, not a vertical wall.
+    A straight wall reads zero draft over a run: its neighbours read zero too. A fillet
+    tangent to the pull is vertical only along a line, and the facets beside it climb away
+    fast — so a zero-draft face whose immediate neighbour is already past `rise` degrees is
+    tessellation of a tangency, not a wall. That distinction is the difference between
+    "this wall needs draft" and "your mesh is finite".
     """
-    fa, ang = mesh.face_adjacency, np.degrees(mesh.face_adjacency_angles)
-    worst = np.zeros(len(mesh.faces))
-    np.maximum.at(worst, fa[:, 0], ang)
-    np.maximum.at(worst, fa[:, 1], ang)
-    return (worst > 0.5) & (worst < smooth_deg)
+    fa = mesh.face_adjacency
+    zero = wall & (draft < zero_tol)
+    steep = wall & (draft > rise)      # a cap at 90 deg is not a fillet climbing away
+    touching = np.zeros(len(mesh.faces), bool)
+    touching[fa[:, 0]] |= steep[fa[:, 1]]
+    touching[fa[:, 1]] |= steep[fa[:, 0]]
+    return zero & touching
 
 
 def undercut_grid(mesh, p, pitch=2.0):
@@ -452,7 +460,7 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0, draped=None
             frac = float(a[sel][out].sum() / max(a[sel].sum(), 1e-9))
             total = float(a[idx].sum())
             overhang, shadowed_in = total * frac, total * (1 - frac)
-    curved = curved_faces(mesh)
+    band = tangent_band(mesh, draft, wall, zero_tol)
     zero = wall & (draft < zero_tol)
     # which way a wall leans. On a male tool pulled along +p a wall whose outward normal
     # tilts along +p opens as the part lifts; one tilting the other way overhangs, and the
@@ -486,8 +494,8 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0, draped=None
             "hidden_split_from_sample": True,
             "reverse_draft_area_mm2": round(float(a[reverse].sum())),
             "worst_reverse_deg": round(float(-lean[reverse].min()), 2) if reverse.any() else 0.0,
-            "zero_draft_wall_area_mm2": round(float(a[zero & ~curved].sum())),
-            "zero_draft_on_curved_mm2": round(float(a[zero & curved].sum())),
+            "zero_draft_wall_area_mm2": round(float(a[zero & ~band].sum())),
+            "zero_draft_tangent_band_mm2": round(float(a[band].sum())),
             "min_wall_draft_deg": round(float(draft[wall].min()), 2) if wall.any() else None,
             "histogram_mm2": {k: round(float(a[wall & (draft >= lo) & (draft < hi)].sum()))
                               for k, lo, hi in (("0-1", 0, 1), ("1-2", 1, 2), ("2-3", 2, 3),
@@ -498,8 +506,7 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0, draped=None
                      "looks inward: the second skin of a shell model, which the sheet never touches "
                      "and which is not a defect. reverse_draft_area is reachable wall that still "
                      "leans the wrong way: the part grows wider away from the opening, so it locks on "
-                     "— also a release failure, not a finish problem. zero_draft_on_curved is tessellation of a fillet tangent to "
-                     "the pull, not a vertical wall: it scales with mesh density and is not a defect"),
+                     "— also a release failure, not a finish problem. "),
         },
         "undercuts": uc or {"note": "NOT MEASURED: needs a watertight mesh and the rtree package "
                                     "(pip install -r requirements.txt)"},
@@ -510,9 +517,9 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0, draped=None
 def geom_facts(path, pull_spec):
     """Draft, undercuts and projected area — from `mold_tool.py` of the `dfm` skill.
 
-    That tool separates facets lying on a curved surface merely tangent to the pull from
-    genuine vertical walls, and checks units and watertightness. Keeping a second
-    implementation of the same numbers here would only let the two drift apart silently.
+    Keeping a second implementation of the same numbers as the primary answer would only
+    let the two drift apart silently, so this one is a cross-check: it runs when the skill
+    is installed and the report speaks only when the two disagree.
     Set MOLD_TOOL to point at it, or install this skill next to `dfm`.
     """
     env = os.environ.get("MOLD_TOOL")
@@ -613,6 +620,10 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=None,
                                  "Limits by method: male 0.25, male with a pre-blown bubble 0.5, "
                                  "plug assist 1.0, plug plus bubble 1.5-2")},
         "watertight": bool(mesh.is_watertight),
+        "scale_check": {"bbox_diagonal_mm": round(float(np.linalg.norm(np.ptp(v, axis=0))), 1),
+                        "units_suspect": bool(h < 5 or max(fw, fl) < 20 or max(fw, fl) > 2500),
+                        "note": "sizes are read as millimetres. A part under 20 mm or over 2.5 m across "
+                                "is unusual for thermoforming — check the file was not exported in cm or inches"},
         "geometry": {
             "source": "built-in",
             "draft": bi["draft"],
@@ -675,7 +686,7 @@ def selftest():
     assert wi["band_mm"][0] < wi["avg_mm"] < wi["band_mm"][1]
     g = r["geometry"]                        # box 100x100x50: four vertical walls, no undercut
     assert g["draft"]["zero_draft_wall_area_mm2"] == 20000, g["draft"]
-    assert g["draft"]["zero_draft_on_curved_mm2"] == 0, g["draft"]
+    assert g["draft"]["zero_draft_tangent_band_mm2"] == 0, g["draft"]   # flat walls, no tangency
     assert g["projection"]["projected_area_mm2"] == 10000 and g["vacuum_force_kgf"] == 90, g
     assert g["undercuts"].get("undercut_area_mm2") == 0, g["undercuts"]
     cc = g["cross_check"]                    # speaks only when the two implementations differ
@@ -685,6 +696,12 @@ def selftest():
     assert r["depth_limit"]["method"] == "male" and r["depth_limit"]["max"] == 0.25   # strictest by default
     assert not r["depth_limit"]["ok"], "0.5 deep must fail a bare male tool"
     assert set(r["assumptions"]) >= {"blank_mm", "clamp_mm", "method"}, r["assumptions"]
+    assert r["scale_check"]["units_suspect"] is False, r["scale_check"]
+    assert r["layout"][0]["recommended"]["fits"], r["layout"][0]
+    huge = measure(trimesh.creation.box([600, 600, 100]), axis("z"), t=3, clamp=25, trim=0, bar=25)
+    assert huge["layout"][0]["recommended"]["does_not_fit"], huge["layout"][0]["recommended"]
+    tiny = measure(trimesh.creation.box([10, 10, 4]), axis("z"), t=3, clamp=25, trim=0, bar=25)
+    assert tiny["scale_check"]["units_suspect"], tiny["scale_check"]
     assert r["depth_limit"]["part_only"] == 0.5 and r["depth_to_width"] == 0.5  # trim=0 here
     soft = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, path=tmp, method="male-bubble")
     assert soft["depth_limit"]["ok"] and soft["depth_limit"]["max"] == 0.5

@@ -42,6 +42,9 @@ python3 skills/thermoforming-dfm/scripts/vf_tool.py measure part.stl --pull z --
 - **Three points to measure on the first formed part**, with expected values — the loop
   that turns the estimate into a calibrated calculation.
 
+- **Zero draft separated from tessellation.** A straight wall reads zero draft over a run;
+  a fillet merely passing through vertical is zero only along a line, and its facets are
+  reported apart as a tangent band — that scales with mesh density and is not a defect.
 - **Draft split by which way the wall leans.** Wall that overhangs locks the part onto a
   male tool no matter how smooth it is — a release failure, and the one a magnitude-only
   draft check misses. Plus undercuts and projected area measured in the same pass: facets on fillets

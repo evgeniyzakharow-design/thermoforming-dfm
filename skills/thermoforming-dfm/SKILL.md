@@ -29,6 +29,10 @@ python3 scripts/vf_tool.py measure part.stl --pull z --t 3 \
         [--blow-share 0.5 | --blow-time 0.2 | --dome 50]
 ```
 
+`--clamp` is the clamped rim per side, `--bar` the width of a divider bar on the frame,
+`--trim` the height added above the part for the trim line (`auto` = 12 + t). All three
+default and all three are declared in the report's `assumptions`.
+
 **Sheet thickness is required** — every wall number scales with it, so the tool will not
 guess. **The method defaults to the strictest** (bare male tool, limit 0.25); giving a
 bubble promotes it to 0.5, a plug assist has to be stated. Limits: male 0.25, male with a
@@ -41,6 +45,12 @@ the same second grows a different bubble on a different blower — so `--blow-ti
 works together with `--blow-rate` measured on that machine, and the tool refuses the
 combination otherwise rather than inventing a rate. The procedure for measuring the rate
 once is in `references/rules.md`.
+
+**Two guards worth reading before the numbers.** `scale_check.units_suspect` fires when
+the part is under 20 mm or over 2.5 m across — usually a file exported in centimetres or
+inches, and every number downstream would be wrong by that factor. `layout[].*.fits` is
+false with a `does_not_fit` line when the part plus its clearance does not go into the
+window at all; the wall figures are then absent rather than optimistic.
 
 **`sheet.draped_area_mm2` is the surface the sheet is taken to cover** — the faces a ray
 along the pull can leave without hitting the part again. That is the top and the walls,
