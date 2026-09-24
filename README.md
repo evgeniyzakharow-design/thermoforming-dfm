@@ -15,7 +15,9 @@ python3 skills/thermoforming-dfm/scripts/vf_tool.py measure part.stl --pull z --
 ```
 
 - **Wall thickness by Illig's law** `s = t * F1/F2` — fed by the free sheet, not by the
-  part's footprint, so the answer depends on how the blank is laid out. The widespread
+  part's footprint, so the answer depends on how the blank is laid out. The covered area
+  in F2 is measured, not assumed: the faces a ray along the pull can leave, which gives
+  the same answer for a closed solid and for a shell. The widespread
   "part area / footprint" shortcut is off by a factor of two on real parts.
 - **Thickness profile along the height**, with the thinnest spot located: material is
   laid out along the sheet's geodesic path from the first point of contact, an idea

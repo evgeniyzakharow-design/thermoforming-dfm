@@ -80,7 +80,10 @@ s = t * F1 / F2
 - `F1` — the free sheet: the blank minus the clamped rim. With several moulds on one
   blank, the share of the field feeding this mould.
 - `F2` — everything the sheet covers when formed: the part plus the apron from the base
-  of the mould out to the frame.
+  of the mould out to the frame. "The part" here means the surface the sheet can actually
+  reach from the pull direction — the top and the walls — not the whole area of the model
+  file: a closed solid also carries the base it stands on, and a shell carries a second
+  skin. Halving the model area, a common shortcut, is right only for a shell.
 - Spread about the average: **+-30 %** (thin 0.7 s, thick 1.3 s).
 
 **The common shortcut "part surface / part footprint" is not the same law.** It feeds

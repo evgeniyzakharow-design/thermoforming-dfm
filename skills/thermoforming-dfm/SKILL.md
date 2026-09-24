@@ -42,6 +42,12 @@ works together with `--blow-rate` measured on that machine, and the tool refuses
 combination otherwise rather than inventing a rate. The procedure for measuring the rate
 once is in `references/rules.md`.
 
+**`sheet.draped_area_mm2` is the surface the sheet is taken to cover** — the faces a ray
+along the pull can leave without hitting the part again. That is the top and the walls,
+and not the base a solid stands on or the inner skin of a shell, so the same part gives
+the same answer whether the file is a closed solid or a double-skinned model. It feeds F2
+directly, so if it looks wrong, every wall number is wrong with it.
+
 **Read the `assumptions` block out loud in the review.** Everything the user did not
 state — blank size, clamped rim, divider bar, method, trim allowance — is listed there
 with what it scales. Blank and clamp set the free sheet F1, so they move every wall

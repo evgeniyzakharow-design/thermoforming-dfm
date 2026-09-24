@@ -7,9 +7,9 @@ the rules to compare against live in SKILL.md and references/rules.md.
   vf_tool.py selftest
 
 Dependencies: trimesh, numpy, scipy (+ lxml for .3mf).
-Geometry facts (draft, undercuts, projected area) are delegated to `mold_tool.py`
-from the `dfm` skill of earthtojake/text-to-cad when it is installed next to this
-skill; without it those fields are reported as not measured.
+Draft, undercuts and projected area are measured here. If the `dfm` skill of
+earthtojake/text-to-cad is installed alongside, its `mold_tool.py` runs as a silent
+cross-check and the report speaks only when the two disagree.
 """
 import argparse
 import pathlib
@@ -113,7 +113,19 @@ def layout(w, l, hm, clamp, bar, blanks, one_side=None, t=3.0, window=None):
     return out
 
 
-def local_draw(mesh, p, patch=12.0):
+def patch_size(mesh):
+    """Neighbourhood over which local draw is averaged, scaled to the part.
+
+    A fixed 12 mm means something different on a 40 mm bracket and on an 800 mm panel. It
+    is taken from the part's two largest extents, and never smaller than a couple of mesh
+    edges — below that the window holds one triangle and reads tessellation, not shape.
+    """
+    ext = sorted(np.ptp(mesh.vertices, axis=0))
+    edge = float(np.median(mesh.edges_unique_length))
+    return float(np.clip((ext[-1] + ext[-2]) / 24.0, max(4.0, 2.5 * edge), 25.0))
+
+
+def local_draw(mesh, p, patch=None):
     """Local areal draw per face: neighbourhood area divided by its projection.
 
     A flat patch gives 1, a leaning wall 1/cos, a vertical one runs away. This is the
@@ -121,6 +133,8 @@ def local_draw(mesh, p, patch=12.0):
     """
     from scipy.spatial import cKDTree
     c, a = mesh.triangles_center, mesh.area_faces
+    if patch is None:
+        patch = patch_size(mesh)
     proj = a * np.abs(mesh.face_normals @ p)
     tree = cKDTree(c)
     ratio = np.ones(len(a))
@@ -157,23 +171,34 @@ def local_radius(mesh):
     return out
 
 
-def zones(mesh, p, t, patch=12.0):
+def zones(mesh, p, t, patch=None):
     """Required radius by zone, and places where the modelled radius is smaller.
 
     Faces steeper than 70 deg to the pull are excluded: their projection is nearly zero,
     so the geometric draw ratio explodes, while the material actually arrived sideways
     from the apron. For those the default radius applies, not the ladder.
     """
+    if patch is None:
+        patch = patch_size(mesh)
     ratio = local_draw(mesh, p, patch)
     need = required_radius(ratio, t)
     have = local_radius(mesh)
     a = mesh.area_faces
+    edge = float(np.median(mesh.edges_unique_length))   # what this mesh can resolve at all
+    fa, ang = mesh.face_adjacency, np.degrees(mesh.face_adjacency_angles)
+    sharp = np.zeros(len(mesh.faces))                   # how hard the surface turns at this face
+    np.maximum.at(sharp, fa[:, 0], ang)
+    np.maximum.at(sharp, fa[:, 1], ang)
     cosp = np.abs(mesh.face_normals @ p)
     shallow = cosp > math.sin(math.radians(20))
     by_need = {}
     for v in sorted(set(np.round(need[shallow], 2))):
         by_need["%.1f" % v] = round(float(a[shallow & np.isclose(need, v)].sum()))
-    tight = shallow & (have < need * 0.9) & np.isfinite(have)
+    # A sharp corner reads as a small radius whatever the mesh density, and that verdict
+    # holds. What does not hold is a gentle fillet split into facets: there d/angle is
+    # large and unstable, so a tight reading below the mesh resolution is dropped.
+    unresolved = (sharp < 10.0) & (have < 2 * edge)
+    tight = shallow & (have < need * 0.9) & np.isfinite(have) & ~unresolved
     worst = None
     if tight.any():
         i = int(np.argmin(np.where(tight, have / need, np.inf)))
@@ -182,15 +207,19 @@ def zones(mesh, p, t, patch=12.0):
                  "required_mm": round(float(need[i]), 2),
                  "estimated_mm": round(float(have[i]), 2)}
     return {
-        "patch_mm": patch,
+        "patch_mm": round(patch, 1),
+        "mesh_median_edge_mm": round(edge, 2),
         "shallow_area_mm2": round(float(a[shallow].sum())),
         "wall_area_mm2": round(float(a[~shallow].sum())),
         "max_local_draw_shallow": round(float(ratio[shallow].max()), 2) if shallow.any() else None,
         "area_by_required_radius_mm2": by_need,
         "tight_area_mm2": round(float(a[tight].sum())),
+        "unresolved_area_mm2": round(float(a[shallow & unresolved].sum())),
         "worst_spot": worst,
         "note": ("Shallow faces only (up to 70 deg to the pull). Modelled radius is estimated from "
-                 "mesh dihedral angles and is coarse — confirm on a section or in CAD."),
+                 "mesh dihedral angles and is coarse — confirm on a section or in CAD. A radius below "
+                 "twice the median edge length is not resolvable in this mesh and is not reported as "
+                 "tight: re-export finer if that verdict matters."),
     }
 
 
@@ -370,6 +399,23 @@ def undercut_grid(mesh, p, pitch=2.0):
             "note": "rays crossing the solid more than twice; resolution is the grid pitch"}
 
 
+def draped_area(mesh, p, eps=0.01):
+    """Area of the surface the sheet actually lies on, whatever the model is.
+
+    A face is draped if a ray leaving it along the pull escapes: nothing of the part is
+    above it. That drops the base a solid stands on and the inner skin of a shell, and it
+    keeps the top and the walls in both cases — so the answer no longer depends on whether
+    the file is a closed solid or a double-skinned shell.
+
+    The shortcut this replaces was total area / 2, true only for a shell. On a solid box
+    100x100x50 it gives 20 000 mm2 where the sheet covers 30 000, and since this feeds F2
+    the error lands straight in the predicted wall, on the thick side.
+    """
+    o = mesh.triangles_center + mesh.face_normals * eps
+    blocked = mesh.ray.intersects_any(o, np.tile(p, (len(o), 1)))
+    return float(mesh.area_faces[~blocked].sum())
+
+
 def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0):
     """Draft, projected area and undercuts computed here, with no outside tool."""
     n, a = mesh.face_normals, mesh.area_faces
@@ -480,7 +526,11 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=None,
     gf = geom_facts(path, pull_spec) or {}
     trim_mm = (12 + t) if trim == "auto" else float(trim)
     hm = h + trim_mm
-    one_side = float(a.sum() / 2)            # shell model: one side is about half the area
+    try:
+        one_side, one_side_how = draped_area(mesh, p), "faces the sheet can reach along the pull"
+    except Exception:                        # no ray engine: fall back to the shell assumption
+        one_side, one_side_how = float(a.sum() / 2), ("HALF THE MESH AREA — a shell assumption, "
+                                                      "wrong for a closed solid; F2 and the wall follow it")
     promoted = method == "male" and bool(dome or blow_share)
     if promoted:                                     # a bubble was given, so the method has one
         method = "male-bubble"
@@ -533,7 +583,7 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=None,
                        if "method" not in given else None),
             ("trim_mm", "auto: 12 + sheet thickness" if "trim" not in given else None),
         ) if v},
-        "sheet": {"t_mm": t, "one_side_area_mm2": round(one_side),
+        "sheet": {"t_mm": t, "draped_area_mm2": round(one_side), "draped_area_from": one_side_how,
                   "note": "wall comes from layout[].wall_illig: s = t*F1/F2, so it depends on the layout"},
         "mold": {"trim_allowance_mm": trim_mm, "mold_height_mm": round(hm, 2)},
         "zones": zones(mesh, p, t),
