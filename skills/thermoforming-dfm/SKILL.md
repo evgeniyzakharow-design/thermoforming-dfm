@@ -27,15 +27,19 @@ limit, required radius by zone with the tightest spot, layout on the blank, aver
 by Illig's law with its +-30 % band, the thickness profile along the height, the bubble's
 share of the draw, and three points to measure on the first formed part.
 
-**Geometry facts — draft, undercuts, projected area — come from `mold_tool.py` of the
-`dfm` skill** ([earthtojake/text-to-cad](https://github.com/earthtojake/text-to-cad)),
-which this tool calls when that skill is installed alongside, or when `MOLD_TOOL` points
-at it. There is no second implementation of those numbers here: two of them would drift
-apart silently. Without it the report says `NOT MEASURED` for those fields and the
-forming maths still runs.
+**The skill stands alone.** Draft, undercuts and projected area are measured here:
+draft per face with facets on fillets tangent to the pull reported separately (they are
+tessellation, not vertical walls); undercuts by counting how often a line along the pull
+crosses the solid — more than twice means material overhangs material and no draft or
+radius will fix it; projected area, and from it the vacuum force on the mould base.
+Undercuts need a watertight mesh; if it is not watertight the field is null and says so.
 
-If the pull direction is not obvious, settle it with `mold_tool.py pulls <mesh>` before
-anything else.
+**If the `dfm` skill of [text-to-cad](https://github.com/earthtojake/text-to-cad) is
+installed alongside** (or `MOLD_TOOL` points at its `mold_tool.py`), its measurements are
+added under `geometry.mold_tool` as a cross-check. Prefer its draft figures — it pools
+facets by the surface they lie on. A disagreement between the two is worth investigating,
+not averaging. Its `pulls` command is also the fastest way to settle a pull direction
+when the obvious one is not obvious.
 
 A screenshot supports a suspicion; it is not a measurement. Script parameters describe
 intent — verify the exported mesh matches them before treating a number as evidence.

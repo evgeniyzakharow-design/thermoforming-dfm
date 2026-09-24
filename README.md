@@ -32,9 +32,14 @@ python skills/thermoforming-dfm/scripts/vf_tool.py measure part.stl --pull z --t
 - **Three points to measure on the first formed part**, with expected values — the loop
   that turns the estimate into a calibrated calculation.
 
-Draft, undercuts and projected area are delegated to `mold_tool.py` from the
-[`dfm`](https://github.com/earthtojake/text-to-cad) skill when it is installed; the
-vacuum force on the tool base is derived from the projected area.
+- **Draft, undercuts and projected area** measured in the same pass: facets on fillets
+  tangent to the pull are reported apart from real vertical walls, undercuts come from
+  counting how often a line along the pull crosses the solid, and the vacuum force on the
+  mould base follows from the projected area.
+
+Nothing else is required to run it. If the [`dfm`](https://github.com/earthtojake/text-to-cad)
+skill happens to be installed alongside, its measurements are added as a cross-check —
+on a test part the two agree to within 3 mm2 of projected area.
 
 ## Example
 

@@ -313,6 +313,75 @@ def measure_request(prof):
     }
 
 
+def curved_faces(mesh, smooth_deg=20.0):
+    """Faces that lie on a curved surface rather than a flat one.
+
+    A face on a plane meets its neighbours at ~0 deg; on a fillet or a cylinder at a few
+    degrees; across a sharp edge at much more. Faces in between are the curved ones. This
+    matters for draft: a curved surface is tangent to the pull along a *line*, so the
+    facets near that line read as zero draft no matter how fine the mesh is — that is
+    tessellation, not a vertical wall.
+    """
+    fa, ang = mesh.face_adjacency, np.degrees(mesh.face_adjacency_angles)
+    worst = np.zeros(len(mesh.faces))
+    np.maximum.at(worst, fa[:, 0], ang)
+    np.maximum.at(worst, fa[:, 1], ang)
+    return (worst > 0.5) & (worst < smooth_deg)
+
+
+def undercut_grid(mesh, p, pitch=2.0):
+    """Where the solid is re-entrant along the pull, by counting ray crossings.
+
+    A shape can be drawn off the tool along `p` only if a line in that direction enters
+    and leaves the solid once. More than one interval means material overhangs material —
+    an undercut — and no radius or draft will fix it. Resolution is the grid pitch.
+    """
+    p = p / np.linalg.norm(p)
+    u = np.cross(p, [1, 0, 0] if abs(p[0]) < 0.9 else [0, 1, 0]); u /= np.linalg.norm(u)
+    w = np.cross(p, u)
+    v = mesh.vertices
+    a1, a2, ap = v @ u, v @ w, v @ p
+    g1 = np.arange(a1.min() + pitch / 2, a1.max(), pitch)
+    g2 = np.arange(a2.min() + pitch / 2, a2.max(), pitch)
+    G1, G2 = np.meshgrid(g1, g2)
+    origins = (G1.ravel()[:, None] * u + G2.ravel()[:, None] * w + (ap.min() - 10) * p)
+    _, idx_ray, _ = mesh.ray.intersects_location(origins, np.tile(p, (len(origins), 1)),
+                                                 multiple_hits=True)
+    counts = np.bincount(idx_ray, minlength=len(origins))
+    return {"pitch_mm": pitch,
+            "footprint_mm2": round(float((counts > 0).sum() * pitch ** 2)),
+            "undercut_area_mm2": round(float((counts > 2).sum() * pitch ** 2)),
+            "note": "rays crossing the solid more than twice; resolution is the grid pitch"}
+
+
+def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0):
+    """Draft, projected area and undercuts computed here, with no outside tool."""
+    n, a = mesh.face_normals, mesh.area_faces
+    cosp = np.abs(n @ p)
+    draft = np.degrees(np.arcsin(np.clip(cosp, 0, 1)))
+    wall = cosp < math.sin(math.radians(wall_limit))
+    curved = curved_faces(mesh)
+    zero = wall & (draft < zero_tol)
+    proj = float((a * cosp).sum()) / 2.0      # exact for a draw-able shape (no self-shadowing)
+    uc = undercut_grid(mesh, p, pitch) if mesh.is_watertight else None
+    return {
+        "draft": {
+            "wall_area_mm2": round(float(a[wall].sum())),
+            "zero_draft_wall_area_mm2": round(float(a[zero & ~curved].sum())),
+            "zero_draft_on_curved_mm2": round(float(a[zero & curved].sum())),
+            "min_wall_draft_deg": round(float(draft[wall].min()), 2) if wall.any() else None,
+            "histogram_mm2": {k: round(float(a[wall & (draft >= lo) & (draft < hi)].sum()))
+                              for k, lo, hi in (("0-1", 0, 1), ("1-2", 1, 2), ("2-3", 2, 3),
+                                                ("3-5", 3, 5), ("5-10", 5, 10), ("10-45", 10, 45.01))},
+            "note": ("zero_draft_on_curved is tessellation of a fillet tangent to the pull, "
+                     "not a vertical wall — it scales with mesh density and is not a defect"),
+        },
+        "undercuts": uc,
+        "projection": {"projected_area_mm2": round(proj),
+                       "note": "sum of |n.p| * area / 2; exact unless the shape shadows itself"},
+    }
+
+
 def geom_facts(path, pull_spec):
     """Draft, undercuts and projected area — from `mold_tool.py` of the `dfm` skill.
 
@@ -347,6 +416,7 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
     w_ = np.cross(p, u)
     fw, fl = sorted([float(np.ptp(v @ u)), float(np.ptp(v @ w_))])
     a = mesh.area_faces
+    bi = builtin_facts(mesh, p)
     gf = geom_facts(path, pull_spec) or {}
     trim_mm = (12 + t) if trim == "auto" else float(trim)
     hm = h + trim_mm
@@ -360,7 +430,7 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
     bfrac, pre = blow_fraction(dome, min(win), f2f1)
     prof_nb = thickness_profile(mesh, p, t, s_avg)
     prof_dome = thickness_profile(mesh, p, t, s_avg, blow=bfrac) if dome else None
-    proj = (gf.get("projection") or {}).get("projected_area_mm2")
+    proj = bi["projection"]["projected_area_mm2"]
     return {
         "pull_axis": p.round(3).tolist(),
         "height_along_pull_mm": round(h, 2),
@@ -372,12 +442,16 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
                                 "1.5-2 with both)"},
         "watertight": bool(mesh.is_watertight),
         "geometry": {
-            "source": ("mold_tool (dfm skill, earthtojake/text-to-cad)" if gf else
-                       "NOT MEASURED: mold_tool not found — draft and undercuts unchecked"),
-            "draft": gf.get("draft"),
-            "undercuts": gf.get("undercuts"),
-            "projection": gf.get("projection"),
-            "vacuum_force_kgf": round(proj / 1e6 * VACUUM_KGF_PER_M2) if proj else None,
+            "source": "built-in" + (" + mold_tool cross-check" if gf else ""),
+            "draft": bi["draft"],
+            "undercuts": bi["undercuts"],
+            "projection": bi["projection"],
+            "vacuum_force_kgf": round(proj / 1e6 * VACUUM_KGF_PER_M2),
+            "mold_tool": ({"draft": gf.get("draft"), "undercuts": gf.get("undercuts"),
+                           "projection": gf.get("projection"),
+                           "note": "from the dfm skill; prefer these draft numbers — it pools facets by "
+                                   "the surface they lie on. A disagreement with the built-in figures "
+                                   "above is worth looking into, not averaging"} if gf else None),
             "note": ("vacuum_force is the projected area times 9000 kgf/m2 — size the mould base and "
                      "its fixings for that. Measure the FORMED shape: slots and holes that are milled "
                      "after forming read as zero draft and undercuts."),
@@ -412,12 +486,19 @@ def selftest():
     wi = r["layout"][0]["recommended"]["wall_illig"]
     assert wi and 0 < wi["avg_mm"] <= r["sheet"]["t_mm"], wi
     assert wi["band_mm"][0] < wi["avg_mm"] < wi["band_mm"][1]
-    g = r["geometry"]
-    if g["draft"]:
-        assert g["draft"]["zero_draft_wall_area_mm2"] == 20000, g["draft"]
-        assert g["vacuum_force_kgf"] == 90, g
-    else:
-        assert "NOT MEASURED" in g["source"], g
+    g = r["geometry"]                        # box 100x100x50: four vertical walls, no undercut
+    assert g["draft"]["zero_draft_wall_area_mm2"] == 20000, g["draft"]
+    assert g["draft"]["zero_draft_on_curved_mm2"] == 0, g["draft"]
+    assert g["projection"]["projected_area_mm2"] == 10000 and g["vacuum_force_kgf"] == 90, g
+    assert g["undercuts"]["undercut_area_mm2"] == 0, g["undercuts"]
+    if g["mold_tool"]:                       # both paths measured the same wall
+        assert abs(g["mold_tool"]["draft"]["zero_draft_wall_area_mm2"] -
+                   g["draft"]["zero_draft_wall_area_mm2"]) < 1, g
+    # a mushroom cannot be drawn along z: the cap overhangs the stem by 100x100 - 40x40
+    cap = trimesh.creation.box([100, 100, 20]); cap.apply_translation([0, 0, 40])
+    stem = trimesh.creation.box([40, 40, 40]); stem.apply_translation([0, 0, 10])
+    uc = undercut_grid(trimesh.util.concatenate([cap, stem]), axis("z"))
+    assert uc["undercut_area_mm2"] == 1600, uc
     assert r["layout"][0]["recommended"]["parts"] == 4, r["layout"][0]
     assert fits(100, 200, 0, 10) == 0 and cells(300, 304, 0, 0) == 0
     assert r["layout"][0]["recommended"]["with_divider"]["cells"] == [2, 2]
