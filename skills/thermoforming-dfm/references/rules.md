@@ -169,6 +169,19 @@ corners, moulds too close together. Cures, cheapest first: a reducing window; mo
 draft and radii; angled fillets or an apron at 45 deg around the base to take up the excess;
 a slower vacuum; and deliberately placing a rib where the fold would otherwise land.
 
+## 11a. Temperature windows
+
+| Material | Forming | Degrades above | Demould around |
+|---|---|---|---|
+| ABS | 150-170 C | 270 C, yellows and blisters from 190 | 80-90 C |
+| HIPS | 140-165 C | 260 C | 70-80 C |
+| PC | 160-190 C | — | 120-130 C |
+| PETG | 130-160 C | — | — |
+
+Controller setpoints and the actual sheet surface diverge by 15-30 C through calibration
+drift and ambient changes: measure the sheet with a contact or IR thermometer rather than
+trusting the panel.
+
 ## 12. Drying
 
 **ABS: 80 C, one hour per millimetre of thickness.** A 3 mm sheet needs 3 hours.
@@ -195,6 +208,13 @@ was not dry enough.** Above 80 C is pointless; the glass transition of ABS is 10
 - Demould an amorphous sheet at about `Tg - 20`, so roughly 80 C for ABS.
 - Tool temperature is the main lever on cycle time: warming the tool from 20 to 70 C
   roughly doubles the cooling time of a 3 mm ABS sheet.
+- **Bring the tool to 40-70 C before production and let it settle for 20-30 minutes.** A
+  cold tool freezes the skin of the sheet within 1-2 seconds of contact — before the
+  vacuum has finished drawing — which is why the first part of a shift loses detail in
+  the corners.
+- **Vacuum at the mould face should reach at least 0.7 bar under load.** Below that the
+  pump is undersized for the part or the system leaks, and no amount of setting changes
+  will fix the result.
 - Contact conductance is not perfect but is high enough not to dominate: at about
   2000 W/(m2K) the Biot number of a 3 mm sheet is ~35 and the contact adds only a few
   per cent to the cooling time; with poor contact (~230 W/(m2K)) it adds half again.
@@ -205,6 +225,8 @@ was not dry enough.** Above 80 C is pointless; the glass transition of ABS is 10
   profile along the height dramatically.
 - Areal pre-stretch of a spherical cap of height `h` over a window of radius `R` is
   `1 + (h/R)^2`; its share of the total draw is `ln(pre) / ln(F2/F1)`.
+- **A practical target for the bubble: 60-80 % of the deepest part on the tool.** Raise
+  the blowing pressure in 0.05 bar steps to reach it.
 - With a bubble, first contact happens at a *point* inside the dome and rolls outward,
   much later than a flat sheet landing on the whole top face.
 - **Height is the physical quantity; seconds are not.** The calculation needs a bubble
@@ -231,6 +253,8 @@ law, venting, wrinkle control); Formech's vacuum forming guide and technical new
 (method-dependent depth limits, one-sided cooling, thickness distribution along the
 profile); Arla Plast and SPE Thermoforming Quarterly (materials and defects);
 Karabeyoglu et al., 2017 (measured wall thickness against geometric prediction);
+ThermoFora's machine and troubleshooting pages (bubble height, tool pre-heat, vacuum
+level, temperature windows);
 Erner, Ecole des Mines de Paris, 2005 (friction and thermal freezing, contact
 conductance); GOST 3212-92 (draft by feature height and pattern material); injection
 moulding and composite tooling design guides for the cross-industry checks.
