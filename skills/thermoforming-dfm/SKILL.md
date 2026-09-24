@@ -59,11 +59,14 @@ crosses the solid — more than twice means material overhangs material and no d
 radius will fix it; projected area, and from it the vacuum force on the mould base.
 Undercuts need a watertight mesh; if it is not watertight the field is null and says so.
 
-**If the `dfm` skill of [text-to-cad](https://github.com/earthtojake/text-to-cad) is
-installed alongside** (or `MOLD_TOOL` points at its `mold_tool.py`), its measurements are
-added under `geometry.mold_tool` as a cross-check. Prefer its draft figures — it pools
-facets by the surface they lie on. A disagreement between the two is worth investigating,
-not averaging. Its `pulls` command is also the fastest way to settle a pull direction
+**The built-in numbers are always the primary answer**, so the same part measures the
+same on every machine. If the `dfm` skill of
+[text-to-cad](https://github.com/earthtojake/text-to-cad) is installed alongside (or
+`MOLD_TOOL` points at its `mold_tool.py`), it is run as a **silent cross-check**:
+`geometry.cross_check` says `agrees: true` and nothing more, or lists the numbers that
+differ. A disagreement is a signal to look at the mesh, not to average — mold_tool pools
+facets by the surface they lie on, which usually makes it right about fillets tangent to
+the pull. Its `pulls` command also remains the fastest way to settle a pull direction
 when the obvious one is not obvious.
 
 A screenshot supports a suspicion; it is not a measurement. Script parameters describe

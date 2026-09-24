@@ -434,6 +434,35 @@ def geom_facts(path, pull_spec):
         return None
 
 
+def cross_check(bi, gf, tol=0.02):
+    """Compare the built-in numbers with mold_tool's, and speak only on a disagreement.
+
+    Both stay in the report otherwise and the built-in ones are always the primary answer:
+    the same part must measure the same on every machine, whether or not the other skill
+    happens to be installed. The cross-check is there to catch one of the two drifting.
+    """
+    if not gf:
+        return {"tool": "mold_tool (dfm skill) not installed", "agrees": None, "differences": None,
+                "note": "install it to have a second, independent measurement of draft and projection"}
+    pairs = {
+        "wall_area_mm2": (bi["draft"]["wall_area_mm2"], (gf.get("draft") or {}).get("wall_area_mm2")),
+        "zero_draft_wall_area_mm2": (bi["draft"]["zero_draft_wall_area_mm2"],
+                                     (gf.get("draft") or {}).get("zero_draft_wall_area_mm2")),
+        "projected_area_mm2": (bi["projection"]["projected_area_mm2"],
+                               (gf.get("projection") or {}).get("projected_area_mm2")),
+    }
+    diff = {k: {"built_in": a, "mold_tool": b}
+            for k, (a, b) in pairs.items()
+            if b is not None and abs(a - b) > max(tol * max(abs(a), abs(b)), 1.0)}
+    return {"tool": "mold_tool (dfm skill)", "agrees": not diff,
+            "differences": diff or None,
+            "note": ("figures above are the built-in measurement; mold_tool agrees within 2 %"
+                     if not diff else
+                     "the two implementations disagree — look at the mesh, do not average. mold_tool "
+                     "pools facets by the surface they lie on, which usually makes it right about "
+                     "fillets tangent to the pull")}
+
+
 def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
             blanks=((500, 500),), path=None, pull_spec="z", method="male-bubble",
             window=None, blow_share=None):
@@ -477,16 +506,12 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=250.0,
                                  "plug assist 1.0, plug plus bubble 1.5-2")},
         "watertight": bool(mesh.is_watertight),
         "geometry": {
-            "source": "built-in" + (" + mold_tool cross-check" if gf else ""),
+            "source": "built-in",
             "draft": bi["draft"],
             "undercuts": bi["undercuts"],
             "projection": bi["projection"],
             "vacuum_force_kgf": round(proj / 1e6 * VACUUM_KGF_PER_M2),
-            "mold_tool": ({"draft": gf.get("draft"), "undercuts": gf.get("undercuts"),
-                           "projection": gf.get("projection"),
-                           "note": "from the dfm skill; prefer these draft numbers — it pools facets by "
-                                   "the surface they lie on. A disagreement with the built-in figures "
-                                   "above is worth looking into, not averaging"} if gf else None),
+            "cross_check": cross_check(bi, gf),
             "note": ("vacuum_force is the projected area times 9000 kgf/m2 — size the mould base and "
                      "its fixings for that. Measure the FORMED shape: slots and holes that are milled "
                      "after forming read as zero draft and undercuts."),
@@ -527,9 +552,9 @@ def selftest():
     assert g["draft"]["zero_draft_on_curved_mm2"] == 0, g["draft"]
     assert g["projection"]["projected_area_mm2"] == 10000 and g["vacuum_force_kgf"] == 90, g
     assert g["undercuts"]["undercut_area_mm2"] == 0, g["undercuts"]
-    if g["mold_tool"]:                       # both paths measured the same wall
-        assert abs(g["mold_tool"]["draft"]["zero_draft_wall_area_mm2"] -
-                   g["draft"]["zero_draft_wall_area_mm2"]) < 1, g
+    cc = g["cross_check"]                    # speaks only when the two implementations differ
+    assert cc["agrees"] in (True, None), cc
+    assert cc["differences"] is None, cc
     assert g["draft"]["reverse_draft_area_mm2"] == 0, g["draft"]   # straight box: no overhang
     assert r["depth_limit"]["method"] == "male-bubble" and r["depth_limit"]["max"] == 0.5
     assert r["depth_limit"]["part_only"] == 0.5 and r["depth_to_width"] == 0.5  # trim=0 here

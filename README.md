@@ -43,9 +43,11 @@ python3 skills/thermoforming-dfm/scripts/vf_tool.py measure part.stl --pull z --
   counting how often a line along the pull crosses the solid, and the vacuum force on the
   mould base follows from the projected area.
 
-Nothing else is required to run it. If the [`dfm`](https://github.com/earthtojake/text-to-cad)
-skill happens to be installed alongside, its measurements are added as a cross-check —
-on a test part the two agree to within 3 mm2 of projected area.
+Nothing else is required to run it, and the built-in numbers are always the primary
+answer — the same part measures the same on every machine. If the
+[`dfm`](https://github.com/earthtojake/text-to-cad) skill happens to be installed
+alongside, it runs as a silent cross-check that speaks only when the two disagree. On a
+test part they agree to within 3 mm2 of projected area.
 
 ## Example
 
