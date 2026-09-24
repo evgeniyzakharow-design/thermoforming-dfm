@@ -399,6 +399,12 @@ def undercut_grid(mesh, p, pitch=2.0):
             "note": "rays crossing the solid more than twice; resolution is the grid pitch"}
 
 
+def draped_mask(mesh, p, eps=0.01):
+    """Which faces the sheet can reach: a ray leaving the face along the pull escapes."""
+    o = mesh.triangles_center + mesh.face_normals * eps
+    return ~mesh.ray.intersects_any(o, np.tile(p, (len(o), 1)))
+
+
 def draped_area(mesh, p, eps=0.01):
     """Area of the surface the sheet actually lies on, whatever the model is.
 
@@ -411,18 +417,41 @@ def draped_area(mesh, p, eps=0.01):
     100x100x50 it gives 20 000 mm2 where the sheet covers 30 000, and since this feeds F2
     the error lands straight in the predicted wall, on the thick side.
     """
-    o = mesh.triangles_center + mesh.face_normals * eps
-    blocked = mesh.ray.intersects_any(o, np.tile(p, (len(o), 1)))
-    return float(mesh.area_faces[~blocked].sum())
+    return float(mesh.area_faces[draped_mask(mesh, p, eps)].sum())
 
 
-def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0):
-    """Draft, projected area and undercuts computed here, with no outside tool."""
+def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0, draped=None):
+    """Draft, projected area and undercuts computed here, with no outside tool.
+
+    Draft is measured over the faces the sheet actually lies on. On a shell model the
+    inner skin leans the opposite way by construction, and counting it would report a
+    cover full of overhangs that is in fact perfectly drafted.
+    """
     n, a = mesh.face_normals, mesh.area_faces
     along = n @ p
     cosp = np.abs(along)
     draft = np.degrees(np.arcsin(np.clip(cosp, 0, 1)))
-    wall = cosp < math.sin(math.radians(wall_limit))
+    wall_all = cosp < math.sin(math.radians(wall_limit))
+    wall = wall_all & draped if draped is not None else wall_all
+    # Wall the sheet cannot reach along the pull, split by why. If a ray along the face's
+    # own normal escapes, the face looks outward and something of the part overhangs it —
+    # a release failure. If that ray is blocked too, the face looks inward: it is the inner
+    # skin of a shell, and the sheet was never meant to touch it.
+    overhang = shadowed_in = None
+    if draped is not None:
+        idx = np.flatnonzero(wall_all & ~draped)
+        if len(idx) == 0:
+            overhang = shadowed_in = 0.0
+        else:
+            # one ray per face is too slow on a fine mesh, so a bounded random sample carries
+            # the split and the areas are scaled by it
+            cap = 600
+            sel = idx if len(idx) <= cap else np.random.default_rng(0).choice(idx, cap, replace=False)
+            o = mesh.triangles_center[sel] + n[sel] * 0.01
+            out = ~mesh.ray.intersects_any(o, n[sel])
+            frac = float(a[sel][out].sum() / max(a[sel].sum(), 1e-9))
+            total = float(a[idx].sum())
+            overhang, shadowed_in = total * frac, total * (1 - frac)
     curved = curved_faces(mesh)
     zero = wall & (draft < zero_tol)
     # which way a wall leans. On a male tool pulled along +p a wall whose outward normal
@@ -439,6 +468,9 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0):
         "draft": {
             "wall_area_mm2": round(float(a[wall].sum())),
             "opening_area_mm2": round(float(a[opening].sum())),
+            "overhung_wall_area_mm2": (round(overhang) if overhang is not None else None),
+            "inner_skin_area_mm2": (round(shadowed_in) if shadowed_in is not None else None),
+            "hidden_split_from_sample": True,
             "reverse_draft_area_mm2": round(float(a[reverse].sum())),
             "worst_reverse_deg": round(float(-lean[reverse].min()), 2) if reverse.any() else 0.0,
             "zero_draft_wall_area_mm2": round(float(a[zero & ~curved].sum())),
@@ -447,9 +479,13 @@ def builtin_facts(mesh, p, wall_limit=45.0, zero_tol=0.5, pitch=2.0):
             "histogram_mm2": {k: round(float(a[wall & (draft >= lo) & (draft < hi)].sum()))
                               for k, lo, hi in (("0-1", 0, 1), ("1-2", 1, 2), ("2-3", 2, 3),
                                                 ("3-5", 3, 5), ("5-10", 5, 10), ("10-45", 10, 45.01))},
-            "note": ("reverse_draft_area is wall that overhangs: the part grows wider away from the "
-                     "opening, so it locks onto a male tool — that is a release failure, not a "
-                     "finish problem. zero_draft_on_curved is tessellation of a fillet tangent to "
+            "note": ("draft is measured over the faces the sheet lies on. overhung_wall_area is wall "
+                     "it cannot reach because part stands over it and the face still looks outward — "
+                     "an overhang, and a release failure. inner_skin_area is wall hidden because it "
+                     "looks inward: the second skin of a shell model, which the sheet never touches "
+                     "and which is not a defect. reverse_draft_area is reachable wall that still "
+                     "leans the wrong way: the part grows wider away from the opening, so it locks on "
+                     "— also a release failure, not a finish problem. zero_draft_on_curved is tessellation of a fillet tangent to "
                      "the pull, not a vertical wall: it scales with mesh density and is not a defect"),
         },
         "undercuts": uc,
@@ -522,13 +558,17 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=None,
     w_ = np.cross(p, u)
     fw, fl = sorted([float(np.ptp(v @ u)), float(np.ptp(v @ w_))])
     a = mesh.area_faces
-    bi = builtin_facts(mesh, p)
+    try:
+        drape = draped_mask(mesh, p)
+    except Exception:
+        drape = None
+    bi = builtin_facts(mesh, p, draped=drape)
     gf = geom_facts(path, pull_spec) or {}
     trim_mm = (12 + t) if trim == "auto" else float(trim)
     hm = h + trim_mm
-    try:
-        one_side, one_side_how = draped_area(mesh, p), "faces the sheet can reach along the pull"
-    except Exception:                        # no ray engine: fall back to the shell assumption
+    if drape is not None:
+        one_side, one_side_how = float(a[drape].sum()), "faces the sheet can reach along the pull"
+    else:                                    # no ray engine: fall back to the shell assumption
         one_side, one_side_how = float(a.sum() / 2), ("HALF THE MESH AREA — a shell assumption, "
                                                       "wrong for a closed solid; F2 and the wall follow it")
     promoted = method == "male" and bool(dome or blow_share)
