@@ -7,6 +7,37 @@ thinner than the sheet and thinner unevenly. So the conversion is not "fix the d
 angles" — it is splitting the part into what a sheet can give and what has to move to a
 neighbouring part or to a machining operation.
 
+## What survives the conversion
+
+Fix these first, before deleting anything: they are why the part exists. Everything in
+the table below is negotiable; this list is not.
+
+- **Silhouette and overall size.** They move only where draft and radii force them, and
+  that is a decision taken deliberately — draft changes an outline by design, not as a
+  side effect.
+- **Interfaces to neighbouring parts — yes. The fastening method — no.** What mates with
+  what survives; how it is held moves: a 1 mm rebate becomes a seat plus magnets, a boss
+  becomes a separate insert.
+- **The stiffness requirement, not the section that delivered it.** Printing gave
+  stiffness through thickness; forming gives it through ribs, steps and a slight crown.
+  Carry over "this face must not oil-can", not "3 mm".
+- **Functional areas and flow sections.** Geometry changes, area is held: inlet, filter
+  face, outlet. Write the areas down before redrawing and check them after — a diameter
+  that moves a millimetre for a tooling reason quietly changes the area it was chosen
+  for, and the change is invisible in the model.
+- **The accurate side and the datums.** On a male tool the accurate side is the inner
+  one, and every fitting dimension is re-referenced to it. Decide this before drawing, or
+  half the dimensions end up on the face the process does not control.
+- **Ergonomics and contact points.** What the hand grips, what the part stands on, which
+  face is the visible one.
+- **Brand lines and markings as intent, not as relief.** A sheet will not pull fine
+  relief: logos and patterns move to an applied part or to another process — laser,
+  print, a label.
+
+**What does not survive, and is not worth defending:** the nominal wall thickness,
+decorative radii below `t`, fasteners in the body of the part, tight dimensions on the
+non-tool side, zero draft.
+
 ## Typical substitutions
 
 | In the printed model | Why a sheet will not give it | What to do |

@@ -25,8 +25,6 @@ then plan for vent marks on it.
 
 - **Male tool: 5 deg or more. Female tool: 3 deg or more.** Textured faces that press
   against the tool: 5 deg minimum.
-- **Wooden or MDF tooling needs more draft than metal** — the same standard adds
-  20-25 % for wooden patterns.
 - Zero draft is not automatically a refusal: the part will release if demoulding is
   mechanised and the surface is smooth, but the force grows. In injection moulding the
   ejection force is friction plus the shrinkage grip resolved through the angle; with a
@@ -284,7 +282,7 @@ Karabeyoglu et al., 2017 (measured wall thickness against geometric prediction);
 ThermoFora's machine and troubleshooting pages (bubble height, tool pre-heat, vacuum
 level, temperature windows);
 Erner, Ecole des Mines de Paris, 2005 (friction and thermal freezing, contact
-conductance); GOST 3212-92 (draft by feature height and pattern material); injection
+conductance); injection
 moulding and composite tooling design guides for the cross-industry checks; Formlabs'
 thermoforming white paper and the IPC and Formech case studies inside it (printed
 tooling, tool temperature in a run).
