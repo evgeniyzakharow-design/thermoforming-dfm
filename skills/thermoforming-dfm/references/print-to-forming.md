@@ -112,8 +112,9 @@ from the features being added, not from the conversion itself.
    male tool with no pre-stretch, 0.5 with a pre-blown bubble, 1 with a plug assist. Take
    it over the *mould* height: the tool stands taller than the part by the trim
    allowance — 6-8 mm (Illig) where a band saw takes the rim, 12 mm + t (Ridat) where the
-   extra height costs nothing — and the blank has to cover the tool plus that apron. Then the layout on the blank — how many parts fit and what share of the free
-   sheet feeds one mould. A part that fails here cannot be rescued by detailing.
+   extra height costs nothing — and the blank has to cover the tool plus that apron.
+   Then the layout on the blank: how many parts fit, and what share of the free sheet
+   feeds one mould. A part that fails here cannot be rescued by detailing.
 3. **Choose the sheet thickness, and show the comparison.** The printed model has no
    sheet, so `t` is a new decision, and it drives the rest: the wall you end up with, the
    radius floor (`t`), vent hole size, drying and heating time, and cost. Run the wall
