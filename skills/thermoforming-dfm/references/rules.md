@@ -274,6 +274,84 @@ A printed tool is a way to run the process before committing to a machined one.
 - ⚠️ **These numbers come from SLA resins with heat deflection 163-238 C.** An FDM tool in
   PLA or PETG will sag under a hot sheet; print in ABS/ASA/PC and check the first part.
 
+## 17. Techniques
+
+The rules above say what a sheet will not do. This section is the other half: the moves
+that make a feature possible after the plain rule has refused it. Each one is a trade,
+and the trade is named.
+
+**Shaping the bubble instead of the part**
+
+- **Cold air on the corners** (Illig 4.1.3). A patch of the bubble chilled by an air
+  nozzle stretches less, so the corners under it come out *thicker* — thickness control
+  with no contact and therefore no marks. Volume, cone, direction and timing are all
+  adjustable. The trade: you are cooling a sheet you just spent a cycle heating, so the
+  same jet that thickens a corner can cost detail reproduction elsewhere. Needs nozzles
+  on the machine.
+- **Bubble limited by a plate** (Illig 4.1.4). Blow against a plate covered with felt or
+  glove cloth: the top of the bubble goes flat, the tool enters it without the sheet
+  sliding over the corners, and chill marks drop sharply. The cloth is not decoration —
+  a bare plate chills the dome it touches. Needs a plate on the upper table.
+- **Pre-suction into a bell instead of blowing** (Illig 4.1.5). Blowing on a sheet
+  machine is limited to **0.025-0.05 bar**; sucking the sheet into a bell reaches
+  **0.9 bar**. An order of magnitude more pre-stretch, and it is the answer when a bubble
+  simply will not grow enough. Clearance between bell and tool **a = (0.12-0.15) h**.
+  Needs a bell and vacuum on the upper table.
+- **Screen the heaters, do not switch them off** (Illig 5.3.1). To make a zone cooler,
+  an aluminium screen — or a jet of cold air — is *significantly* more effective than
+  turning off a heater, because a heater switched off does not go cold: at a panel
+  temperature of 600 C it still sits around 120 C, fed by its neighbours. Costs nothing
+  but a sheet of aluminium.
+
+**The frame doing design work**
+
+- **An oval contour screen over a rectangular tool** (Illig 10.3.7). A reducing screen
+  that follows the part outline at a constant offset starves the draw everywhere and
+  gives thin side walls. An **oval** screen over a rectangular male tool prevents the
+  corner wrinkles in the clamp plane and enlarges the forming area; the price is an
+  uneven thickness distribution across that area. Gap **b = 1.5 s + (3-6) mm** in both
+  cases.
+- **A deliberately enlarged feed zone** (Illig 9.1). Giving away more sheet as scrap
+  evens out the wall in the region that will be trimmed. An honest trade, not a free
+  win — and the reason to draw the trim line away from corners.
+- **Lower holders between cavities** (Illig 3.6). Splitting the forming area with holders
+  lets each mould have *its own bubble*, which both improves the wall distribution and
+  allows the moulds to sit closer than the spacing table would otherwise permit. This is
+  the same object as the divider bar in section 6, used as a design lever rather than as
+  a frame part.
+
+**Features a sheet is not supposed to have**
+
+- **Living hinges** (Illig 10.3.8). A groove pressed by a bar while the sheet is hot. A
+  stiff hinge: **R = (5-6) s**. A flexible one at h:b = 5:8: **b = (15-25) s**, and the
+  freer variant **b = (10-20) s**. ⚠️ The numbers come from packaging gauges — the worked
+  examples are s = 0.35-0.4 mm. They do not scale to heavy sheet: the same ratio on 3 mm
+  gives a 15-18 mm radius, which is a different feature entirely.
+- **Snap buttons** (Illig 10.3.8). A positive button pressed into a negative dimple:
+  **H:D = 0.5:1 to 0.8:1**, **D = 6-10 mm**, **d = D - 1.6 s**. It only works as a pair —
+  a formed button into a formed dimple. Same gauge caveat as the hinge.
+- **An insert pressed in during forming** (Illig 4.7.7). A knurled nut sits on a locating
+  pin in the tool and the sheet closes around it — a thread in a shell without a second
+  part. Conditions: the insert must conduct heat well, and the air around it must have
+  somewhere to go, or it will not seat.
+- **Local compression while the sheet is hot** (Illig 4.7.6) — date stamps, marks, seams
+  pressed into a small area during the cycle. Small areas only: the forces are high.
+
+**Tooling**
+
+- **Slots instead of holes** (Illig 10.3.4). A 0.5 mm slot evacuates faster than a round
+  hole and leaves less of a mark; 0.6-0.8 mm where evacuation must be very fast. Harder
+  to make in wood or filled resin than a drilled hole, which is why holes stay the
+  default.
+- **Vent channels cast in, not drilled** (Sheryshev). Lay greased steel wire where the
+  channels should be before pouring a resin tool and pull it out after about 1.5-2 hours.
+  Only applies to cast tooling.
+- **Porous tool materials** need no vents at all — see section 8.
+
+**What this section is not.** None of these rescue a part that fails the ceilings in
+sections 2 and 4: draft, depth by method and the layout come first. They change the
+thickness map, the wrinkles and the feature set — not whether the part releases.
+
 ## Sources
 
 Rules are compiled from: Illig/Schwarzmann, *Thermoforming* (radius ladder, the wall
