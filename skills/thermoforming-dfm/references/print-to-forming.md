@@ -15,7 +15,7 @@ neighbouring part or to a machining operation.
 | Narrow deep groove, a 3 mm wall standing 12 mm tall | the sheet cannot reach the bottom: the groove is deeper than it is wide | widen it, add draft and radii, or make it a separate part |
 | Double walls, closed volume | one surface, one open side | second part, joined after forming |
 | Holes, slots, windows | vacuum does not make holes; the sheet just spans them | machine after forming; check there is flat land around the hole for a nut, and that the fixture can reach the side |
-| Zero draft | the part shrinks onto a male tool and grips | 5 deg on a male tool, 3 deg on a female one; below 10 mm of height work to a clearance of 0.5 mm per side |
+| Zero draft | the part shrinks onto a male tool and grips | 5 deg on a male tool, 3 deg on a female one |
 | Sharp edge, decorative R1 | the sheet will not lay into it, and the corner becomes a stress raiser | radius by local draw, 1.5 t by default, never below t |
 | Undercuts | the tool will not come out | remove, split into two parts, or change the pull direction |
 | Ribs inward | on a male tool the inner surface is the tool face | ribs outward, preferably along the walls |

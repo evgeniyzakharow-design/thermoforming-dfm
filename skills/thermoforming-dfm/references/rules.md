@@ -25,10 +25,6 @@ then plan for vent marks on it.
 
 - **Male tool: 5 deg or more. Female tool: 3 deg or more.** Textured faces that press
   against the tool: 5 deg minimum.
-- **On short features check the gap, not the angle.** 5 deg over a 5 mm rib is only
-  0.44 mm of clearance per side. The foundry pattern standard (GOST 3212-92) asks for
-  0.50 mm at that height and specifies draft *by feature height*, with the absolute
-  offset roughly constant at 0.4-1.2 mm. Below ~10 mm, design to the offset.
 - **Wooden or MDF tooling needs more draft than metal** — the same standard adds
   20-25 % for wooden patterns.
 - Zero draft is not automatically a refusal: the part will release if demoulding is
