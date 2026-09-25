@@ -76,10 +76,6 @@ then plan for vent marks on it.
   sheet is drawn over all of it. A part that passes on its own height can fail on the
   mould's.
 - Guides that quote 0.75 are usually quoting a female tool with a plug assist.
-- **Areal draw ratio 3:1 is the ceiling of the process** (Formlabs). Note the
-  convention: they take part surface over the *tool footprint*, which is not the
-  denominator this file uses for wall thickness (that is `F1/F2` over the free sheet,
-  section 5). Useful as a go/no-go bound, not as a thickness calculator.
 - The same wall shows up in neighbouring processes: in deep drawing of sheet metal the
   limiting first-draw coefficient is about 0.55. Every drawing process has a ceiling per
   pass; past it you need a second tool, not a better radius.
@@ -295,6 +291,6 @@ Erner, Ecole des Mines de Paris, 2005 (friction and thermal freezing, contact
 conductance); GOST 3212-92 (draft by feature height and pattern material); injection
 moulding and composite tooling design guides for the cross-industry checks; Formlabs'
 thermoforming white paper and the IPC and Formech case studies inside it (printed
-tooling, areal draw ceiling, tool temperature in a run).
+tooling, tool temperature in a run).
 
 Numbers are cited; no source text is reproduced here.
