@@ -30,8 +30,10 @@ the table below is negotiable; this list is not.
   gasket — is the dimension that carries over unchanged; the wall then eats inward by
   whatever the technology gives. Compare like for like across the two revisions: a
   printed feature measured on its bore and a formed one measured on its outside are not
-  the same number, and the comparison will invent a loss that is not there. At equal
-  interface the thinner formed wall usually gives the *larger* free section.
+  the same number, and the comparison will invent a loss that is not there. Whichever
+  surface is free moves by the difference in wall: at an equal *outside* interface a
+  thinner formed wall gives a *larger* bore; at an equal *inside* interface it gives a
+  *smaller* outside envelope.
 - **The accurate side and the datums.** On a male tool the accurate side is the inner
   one, and every fitting dimension is re-referenced to it. Decide this before drawing, or
   half the dimensions end up on the face the process does not control.
@@ -61,9 +63,10 @@ So at every interface, ask before redrawing, and do not pick one to keep moving:
 2. **What is the clearance to the mating part?** The formed wall varies by about +-30 %,
    and if the interface is not the surface lying on the tool, that variation lands inside
    the clearance.
-3. **Does the interface surface lie on the tool?** On a male tool the tool face is the
-   inner surface of the part — except inside a pocket or a hole drawn into the tool,
-   where it is the outer one. If the functional surface is not the tool side, either move
+3. **Does the interface surface lie on the tool?** The tool face is whatever touched the
+   tool — on a male tool, the inside of the part as a whole. Mind the local wording: a
+   tube drawn down into a hole in the tool touches it with that tube's *outside*, and
+   that outside is still the tool face. If the functional surface is not the tool side, either move
    the interface to the tool side or widen the clearance to swallow two wall thicknesses.
 
 Record the answer as a named constant on that surface in the model, and add a check that
@@ -80,35 +83,58 @@ fit.
 | Double walls, closed volume | one surface, one open side | second part, joined after forming |
 | Holes, slots, windows | vacuum does not make holes; the sheet just spans them | machine after forming; check there is flat land around the hole for a nut, and that the fixture can reach the side |
 | Zero draft | the part shrinks onto a male tool and grips | 5 deg on a male tool, 3 deg on a female one |
-| Sharp edge, decorative R1 | the sheet will not lay into it, and the corner becomes a stress raiser | radius by local draw, 1.5 t by default, never below t |
+| Sharp edge, decorative R1 | the sheet will not lay into it, and the corner becomes a stress raiser | radius by the **local** draw (the ladder in `rules.md` section 3), 1.5 t by default, never below t where the sheet stretches. At bottom and three-way corners the ladder is already at its maximum; the house rule adds a larger hand-check radius from the depth tables — a deliberate margin for working without a plug, not a law |
 | Undercuts | the tool will not come out | remove, split into two parts, or change the pull direction |
 | Ribs inward | on a male tool the inner surface is the tool face | ribs outward, preferably along the walls |
-| Constant 3 mm wall | formed wall varies: ~0.77 t at the top, down to 0.5 t in the bottom corner | anything needing thickness (threads, magnet pockets, press fits) goes to a separate part or is machined to the measured thickness |
+| Constant 3 mm wall | the formed wall varies, and the map belongs to the **tool**, not to the product: on a male tool with no pre-stretch the face that lands first stays near `t`, the outer corners at the base hold 25-40 %; with a bubble the sheet is stretched before it touches anything, the profile flattens and the first-contact face comes out *thinner*; in a cavity the flange is thickest and the cavity bottom and its corners thinnest | anything needing thickness (threads, magnet pockets, press fits) goes to a separate part or is machined to the measured thickness |
+| A large flat panel that printing held with 3 mm of thickness | the formed panel is thinner than the sheet and reads wavy; a shell also needs somewhere to put the material it has left over in the corners | stiffen it: ribs, shallow steps or a slight crown. Ribs do double duty — Illig uses them deliberately to absorb excess material instead of a wrinkle (9.1). His observation that flat surfaces go wavy is about *freely cooled* ones; a panel lying on the tool is cooled by it, so treat this as stiffness first |
 | Closed bottom | forming is always open on one side | separate bottom part; plan the trim line |
 | Nominal dimensions | shrinkage 0.6-0.7 % | the tool is made oversize, not the part |
 
+**The envelope usually grows, but only by what you add.** Draft, radii and a seat for
+the neighbouring part all push outward, and the neighbours follow — a body that grew
+takes its base plate and its cover with it. If the printed model was already drawn with
+draft and radii by someone who knew the process, nothing moves at all: the growth comes
+from the features being added, not from the conversion itself.
+
 ## Order of work
 
-1. **Decide male or female.** Everything else follows: where the accurate side is, which
-   way ribs point, where it will be thin.
-2. **Check the two ceilings before drawing anything.** Depth to smallest width no more
-   than 0.5, and the layout on the blank — how many parts fit and what share of the free
+1. **Decide the tool and the orientation.** Male or female — and which way up the part
+   sits on the tool, because a part can be formed upside down and turned over afterwards.
+   This single decision fixes four things at once: which side is accurate (the tool
+   side), where the thick and the thin material land (the map follows the tool, not the
+   product), which face keeps the sheet's own texture and which one collects vent marks,
+   and which way ribs point. A printed model answers none of them — it has no sheet, no
+   tool side and no texture — so these are decisions being made now, not properties being
+   carried over.
+2. **Check the two ceilings before drawing anything.** Depth to smallest width — and the
+   ceiling depends on the method, not on the material (`rules.md` section 4): 0.25 on a
+   male tool with no pre-stretch, 0.5 with a pre-blown bubble, 1 with a plug assist. Take
+   it over the *mould* height: the tool stands taller than the part by the trim
+   allowance — 6-8 mm (Illig) where a band saw takes the rim, 12 mm + t (Ridat) where the
+   extra height costs nothing — and the blank has to cover the tool plus that apron. Then the layout on the blank — how many parts fit and what share of the free
    sheet feeds one mould. A part that fails here cannot be rescued by detailing.
-3. **Delete what a sheet cannot give** — masses, narrow grooves, undercuts, closed
+3. **Choose the sheet thickness, and show the comparison.** The printed model has no
+   sheet, so `t` is a new decision, and it drives the rest: the wall you end up with, the
+   radius floor (`t`), vent hole size, drying and heating time, and cost. Run the wall
+   calculation for each thickness actually available and put them side by side — average
+   wall, thinnest corner, radius floor, drying time — then recommend one and say why. Do
+   not let `t` arrive by inheritance from the prototype's wall.
+4. **Delete what a sheet cannot give** — masses, narrow grooves, undercuts, closed
    volumes, holes — using the table above.
-4. **Redistribute the functions.** Load paths, threads, accurate thicknesses usually
+5. **Redistribute the functions.** Load paths, threads, accurate thicknesses usually
    belong to the neighbouring part, and that assembly is designed here, not afterwards.
    For every feature that meets a neighbour, settle the interface question above before
    drawing it — one question asked beats a diameter chosen by accident.
-5. **Draft and radii**, by feature height and by local draw — not one value for the part.
-6. **Wall and shrinkage**: compute the wall from the layout, look at the profile and the
+6. **Draft and radii**, by feature height and by local draw — not one value for the part.
+7. **Wall and shrinkage**: compute the wall from the layout, look at the profile and the
    thinnest spot, put the shrinkage into the tool.
-7. **Measure the formed shape, not the finished part.** Slots and holes are machined
+8. **Measure the formed shape, not the finished part.** Slots and holes are machined
    after forming but exist in the model, and their vertical faces read as zero draft and
    undercuts. Strip them before measuring, or subtract them explicitly from the report.
-8. **The first tool can be printed too.** If the prototype came off a printer, the trial
+9. **The first tool can be printed too.** If the prototype came off a printer, the trial
    tool can as well: 20-50 parts is enough to settle the bubble, the cycle and the wall
    before anyone mills anything (section 16 of `rules.md`). Print it hollow with vented
    ribs, and not in PLA.
-9. **Run the tool and hand over a measurement sheet** so the first formed part comes back
+10. **Run the tool and hand over a measurement sheet** so the first formed part comes back
    with three numbers (`references/measurement-sheet.md`).
