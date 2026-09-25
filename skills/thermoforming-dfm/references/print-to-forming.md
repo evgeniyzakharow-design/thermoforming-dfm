@@ -25,6 +25,13 @@ the table below is negotiable; this list is not.
   face, outlet. Write the areas down before redrawing and check them after — a diameter
   that moves a millimetre for a tooling reason quietly changes the area it was chosen
   for, and the change is invisible in the model.
+- **Hold the interface dimension, not the one you happened to draw.** Whatever meets the
+  neighbouring part — an outside diameter entering a bore, a face that lands on a
+  gasket — is the dimension that carries over unchanged; the wall then eats inward by
+  whatever the technology gives. Compare like for like across the two revisions: a
+  printed feature measured on its bore and a formed one measured on its outside are not
+  the same number, and the comparison will invent a loss that is not there. At equal
+  interface the thinner formed wall usually gives the *larger* free section.
 - **The accurate side and the datums.** On a male tool the accurate side is the inner
   one, and every fitting dimension is re-referenced to it. Decide this before drawing, or
   half the dimensions end up on the face the process does not control.
