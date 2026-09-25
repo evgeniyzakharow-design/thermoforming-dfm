@@ -7,6 +7,23 @@ thinner than the sheet and thinner unevenly. So the conversion is not "fix the d
 angles" — it is splitting the part into what a sheet can give and what has to move to a
 neighbouring part or to a machining operation.
 
+## Check first, change second
+
+Everything below is a **check against the model in front of you**, not a list of edits to
+apply. For each item: measure it, state the number, then decide.
+
+- **Already complies** — leave it exactly as it is, and say in the report that it was
+  checked and left. Silence invites someone to redo it later, and a redraw of a feature
+  that was already right is the cheapest way to break a design.
+- **Fails** — the table says what to do, with the measured number in the report.
+- **Cannot be measured** — say so. "Not measured" is not "does not comply", and it is not
+  "fine" either.
+
+A prototype drawn by an engineer who knew the process can pass most of this list on the
+first pass: draft, radii and an open bottom may all be there already. The conversion is
+then the handful of items that failed, not a redesign. Report all three groups — passed,
+failed, unmeasured — so the reader can see the check was actually run.
+
 ## What survives the conversion
 
 Fix these first, before deleting anything: they are why the part exists. Everything in
@@ -121,8 +138,9 @@ from the features being added, not from the conversion itself.
    calculation for each thickness actually available and put them side by side — average
    wall, thinnest corner, radius floor, drying time — then recommend one and say why. Do
    not let `t` arrive by inheritance from the prototype's wall.
-4. **Delete what a sheet cannot give** — masses, narrow grooves, undercuts, closed
-   volumes, holes — using the table above.
+4. **Check each row of the table against the model, then delete only what failed** —
+   masses, narrow grooves, undercuts, closed volumes, holes. What already complies is
+   recorded as checked and left alone.
 5. **Redistribute the functions.** Load paths, threads, accurate thicknesses usually
    belong to the neighbouring part, and that assembly is designed here, not afterwards.
    For every feature that meets a neighbour, settle the interface question above before

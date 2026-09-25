@@ -131,6 +131,8 @@ the shape that will actually be formed, or subtract those areas explicitly.
 1. How the part was read: male or female tool, pull direction, which side is accurate.
 2. Failures in order of severity: will not release (zero draft, undercut) -> will not
    form (depth, radii, venting) -> wall too thin -> layout.
+2a. What was checked and already complies, listed as plainly as the failures. A design
+   that passes a check is not a non-event: saying so is what stops it being redrawn.
 3. For each failure, a concrete fix with numbers ("step draft 0 deg -> 3 deg"), not a
    restatement of the rule.
 4. Layout: parts per blank, with and without a divider bar.
