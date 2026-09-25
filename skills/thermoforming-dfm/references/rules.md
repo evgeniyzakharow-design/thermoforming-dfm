@@ -46,6 +46,15 @@ then plan for vent marks on it.
   stricter reading — below 1.2 -> 0.5 t; 1.2 to 3 -> 1 t; above 3 -> 1.5 t — taking the
   upper end of the middle band and applying the floor, because a sheet that stretches at
   all will not lay into half its own thickness.
+- **A shallow step is not a wall — it is an S.** A step of depth `h` is formed by two
+  tangent arcs with no straight wall between them while `h <= 2R`; the transition takes
+  `2R*sin(theta)` across, where `cos(theta) = 1 - h/(2R)`. With `R = t = 3 mm`: a 1 mm
+  step needs 3.3 mm of width, 1.5 mm needs 4.0, 3 mm needs 5.2, and 6 mm (`= 2R`) needs
+  6.0. Deeper than `2R` a straight wall appears between the arcs and it needs draft.
+  Do not reject a shallow step or a decorative groove — compute the width it needs.
+  (Geometry is ours; the rule behind it is Illig fig. 9.8 — a sharp change of height or
+  section is bad, a radius or a slope is good, otherwise webbing — and CW Thomas p. 32,
+  rib edges are made of multiple radii to limit thinning.)
 - **Bottom corners and three-way corners: 3 t**, because the sheet arrives there last
   and is thinnest. The ladder above tops out at 1.5 t, so this one is a hand check — the
   tool will not raise it.
@@ -67,6 +76,10 @@ then plan for vent marks on it.
   sheet is drawn over all of it. A part that passes on its own height can fail on the
   mould's.
 - Guides that quote 0.75 are usually quoting a female tool with a plug assist.
+- **Areal draw ratio 3:1 is the ceiling of the process** (Formlabs). Note the
+  convention: they take part surface over the *tool footprint*, which is not the
+  denominator this file uses for wall thickness (that is `F1/F2` over the free sheet,
+  section 5). Useful as a go/no-go bound, not as a thickness calculator.
 - The same wall shows up in neighbouring processes: in deep drawing of sheet metal the
   limiting first-draw coefficient is about 0.55. Every drawing process has a ceiling per
   pass; past it you need a second tool, not a better radius.
@@ -211,7 +224,9 @@ was not dry enough.** Above 80 C is pointless; the glass transition of ABS is 10
 - **Bring the tool to 40-70 C before production and let it settle for 20-30 minutes.** A
   cold tool freezes the skin of the sheet within 1-2 seconds of contact — before the
   vacuum has finished drawing — which is why the first part of a shift loses detail in
-  the corners.
+  the corners. **The other end of the same window: do not let the tool climb past
+  70-80 C in a run** (Formlabs) — lengthen the cycle instead. Cold-cured epoxy tooling
+  has a glass transition in exactly that band.
 - **Vacuum at the mould face should reach at least 0.7 bar under load.** Below that the
   pump is undersized for the part or the system leaks, and no amount of setting changes
   will fix the result.
@@ -244,6 +259,27 @@ was not dry enough.** Above 80 C is pointless; the glass transition of ABS is 10
   trial parts — thin top means the bubble was too big, thin bottom corners mean it was
   too small.
 
+## 16. Printed tooling
+
+A printed tool is a way to run the process before committing to a machined one.
+
+- **Life: 20-50 cycles.** Measured cases: 20 parts from 3 mm PS with no degradation and
+  an estimate of 50 (IPC, on a BERG M7, sheet 170 C, cycle 200 s, tool steady at 75 C);
+  50 parts of 1.5 mm ABS and HIPS on each of three tools (Formech 686, 180 C, 2.5 min).
+  Thin sheet on a short cycle is the harsh case: 0.5 mm at an 80 s cycle starts losing
+  quality after about 10 parts.
+- **Print it hollow**, 1-2 mm wall (3 mm at the base), with a rib network following the
+  topology and **notches cut in the ribs so air can circulate**. No supports on the
+  forming face; a male tool prints straight on the platform.
+- **Vents print from 0.5-1 mm**; below 1 mm they may need piercing. The IPC torture-test
+  tool used 0.8-1.2 mm, plus a deliberate zone with no draft and 5 mm radii, and survived
+  its 20 parts.
+- Keep the tool under the temperature window of section 14; add cooling channels on large
+  tools.
+- **Size:** IPC suggest staying near A4 (210 x 297 mm) to limit dimensional drift.
+- ⚠️ **These numbers come from SLA resins with heat deflection 163-238 C.** An FDM tool in
+  PLA or PETG will sag under a hot sheet; print in ABS/ASA/PC and check the first part.
+
 ## Sources
 
 Rules are compiled from: Illig/Schwarzmann, *Thermoforming* (radius ladder, the wall
@@ -257,6 +293,8 @@ ThermoFora's machine and troubleshooting pages (bubble height, tool pre-heat, va
 level, temperature windows);
 Erner, Ecole des Mines de Paris, 2005 (friction and thermal freezing, contact
 conductance); GOST 3212-92 (draft by feature height and pattern material); injection
-moulding and composite tooling design guides for the cross-industry checks.
+moulding and composite tooling design guides for the cross-industry checks; Formlabs'
+thermoforming white paper and the IPC and Formech case studies inside it (printed
+tooling, areal draw ceiling, tool temperature in a run).
 
 Numbers are cited; no source text is reproduced here.

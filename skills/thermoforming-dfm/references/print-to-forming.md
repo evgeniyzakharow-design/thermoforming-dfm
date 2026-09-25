@@ -40,5 +40,9 @@ neighbouring part or to a machining operation.
 7. **Measure the formed shape, not the finished part.** Slots and holes are machined
    after forming but exist in the model, and their vertical faces read as zero draft and
    undercuts. Strip them before measuring, or subtract them explicitly from the report.
-8. **Run the tool and hand over a measurement sheet** so the first formed part comes back
+8. **The first tool can be printed too.** If the prototype came off a printer, the trial
+   tool can as well: 20-50 parts is enough to settle the bubble, the cycle and the wall
+   before anyone mills anything (section 16 of `rules.md`). Print it hollow with vented
+   ribs, and not in PLA.
+9. **Run the tool and hand over a measurement sheet** so the first formed part comes back
    with three numbers (`references/measurement-sheet.md`).
