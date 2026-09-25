@@ -45,6 +45,32 @@ the table below is negotiable; this list is not.
 decorative radii below `t`, fasteners in the body of the part, tight dimensions on the
 non-tool side, zero draft.
 
+## Interfaces: ask which surface carries the function
+
+A feature that meets a neighbouring part has two surfaces, and only one of them carries
+the function: a spigot entering a bore works on its outside, a socket receiving a shaft
+works on its inside, a lip sealing against a face works on the face. **Which one it is
+cannot be read off the geometry.** It comes from what the neighbour does, and a printed
+model carries no answer either — there both surfaces were simply drawn to nominal.
+
+So at every interface, ask before redrawing, and do not pick one to keep moving:
+
+1. **Which dimension has to stay the same — the outside or the inside?** That one is the
+   interface and it transfers unchanged. The other is a consequence of wall thickness and
+   will move.
+2. **What is the clearance to the mating part?** The formed wall varies by about +-30 %,
+   and if the interface is not the surface lying on the tool, that variation lands inside
+   the clearance.
+3. **Does the interface surface lie on the tool?** On a male tool the tool face is the
+   inner surface of the part — except inside a pocket or a hole drawn into the tool,
+   where it is the outer one. If the functional surface is not the tool side, either move
+   the interface to the tool side or widen the clearance to swallow two wall thicknesses.
+
+Record the answer as a named constant on that surface in the model, and add a check that
+the constant still sits there. A constant that migrates to the other surface reproduces
+the printed geometry under a formed name: the model reads correctly and the part does not
+fit.
+
 ## Typical substitutions
 
 | In the printed model | Why a sheet will not give it | What to do |
@@ -72,6 +98,8 @@ non-tool side, zero draft.
    volumes, holes — using the table above.
 4. **Redistribute the functions.** Load paths, threads, accurate thicknesses usually
    belong to the neighbouring part, and that assembly is designed here, not afterwards.
+   For every feature that meets a neighbour, settle the interface question above before
+   drawing it — one question asked beats a diameter chosen by accident.
 5. **Draft and radii**, by feature height and by local draw — not one value for the part.
 6. **Wall and shrinkage**: compute the wall from the layout, look at the profile and the
    thinnest spot, put the shrinkage into the tool.
