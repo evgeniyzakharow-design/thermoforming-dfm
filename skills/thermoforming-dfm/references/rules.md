@@ -232,6 +232,10 @@ was not dry enough.** Above 80 C is pointless; the glass transition of ABS is 10
   `1 + (h/R)^2`; its share of the total draw is `ln(pre) / ln(F2/F1)`.
 - **A practical target for the bubble: 60-80 % of the deepest part on the tool.** Raise
   the blowing pressure in 0.05 bar steps to reach it.
+- **Above roughly 100 mm of tool height a male tool needs the bubble** (Formech): without
+  it the sheet lands on the top and everything below is drawn from what is left, and the
+  lower corners run out of material. Too big a bubble fails the other way — thin top,
+  thin bottom corners, and at the extreme the sheet tears.
 - With a bubble, first contact happens at a *point* inside the dome and rolls outward,
   much later than a flat sheet landing on the whole top face.
 - **Height is the physical quantity; seconds are not.** The calculation needs a bubble

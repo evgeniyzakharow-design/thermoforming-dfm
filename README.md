@@ -103,6 +103,25 @@ python3 skills/thermoforming-dfm/scripts/vf_tool.py selftest
 
 Python 3.11+, `trimesh`, `numpy`, `scipy` (`lxml` for .3mf). Export STEP to STL first.
 
+## Using it on a real machine
+
+The skill is deliberately machine-agnostic: it knows the process, not your shop. Blank
+size, clamped rim, divider bar, method and sheet thickness come from you — the tool
+defaults what it can and lists every default in the report's `assumptions`, and it
+refuses to guess the sheet thickness at all, because every wall number scales with it.
+
+If you use it in production, the pattern that works is a **thin machine layer of your
+own** next to this skill: a second skill that carries your constants (blank, clamp, bar,
+method, bubble rate), your material and the paths to your own process documents, and
+calls this one for every measurement. Two things make that layer stay honest:
+
+- **Quote, do not copy.** Numbers in your layer should be citations of `rules.md` with
+  the section named, not a second copy of them. A copied limit drifts from its original
+  in silence, and nobody finds out until a part is wrong.
+- **One implementation of each measurement.** If your layer needs a number the tool does
+  not produce, add it here rather than writing a parallel script; two implementations of
+  draft or undercuts disagree eventually, and then neither is trusted.
+
 ## What is here
 
 | File | What |
