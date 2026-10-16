@@ -51,11 +51,15 @@ works together with `--blow-rate` measured on that machine, and the tool refuses
 combination otherwise rather than inventing a rate. The procedure for measuring the rate
 once is in `references/rules.md`.
 
-**Two guards worth reading before the numbers.** `scale_check.units_suspect` fires when
+**Three guards worth reading before the numbers.** `scale_check.units_suspect` fires when
 the part is under 20 mm or over 2.5 m across — usually a file exported in centimetres or
 inches, and every number downstream would be wrong by that factor. `layout[].*.fits` is
 false with a `does_not_fit` line when the part plus its clearance does not go into the
 window at all; the wall figures are then absent rather than optimistic.
+`blank_check.blocker` fires when no blank was given and the default does not take the
+part: ask for the machine's sheet size (`min_blank_mm` is the least that takes one part)
+instead of reporting a layout for somebody else's machine. `mould_on_window_mm` says
+which way round the mould lies on the window.
 
 **`sheet.draped_area_mm2` is the surface the sheet is taken to cover** — the faces a ray
 along the pull can leave without hitting the part again. That is the top and the walls,
@@ -94,6 +98,11 @@ tessellation, not vertical walls); undercuts by counting how often a line along 
 crosses the solid — more than twice means material overhangs material and no draft or
 radius will fix it; projected area, and from it the vacuum force on the mould base.
 Undercuts need a watertight mesh; if it is not watertight the field is null and says so.
+Undercuts come as `zones`, each with its box, its band along the pull and its
+`overhang_mm`, so the review can say *where* and *how much*. Each zone gets one of the
+fixes in `references/rules.md` section 7 — strip off, loose insert, change the shape,
+form open and bend after — with what it costs: a loose insert leaves a visible seam and a
+hand operation every cycle, and whether that is acceptable is the customer's call.
 
 **The built-in numbers are always the primary answer**, so the same part measures the
 same on every machine. If the `dfm` skill of
@@ -121,10 +130,12 @@ holds, report it as the finding instead of publishing numbers that look precise:
 | pull direction not settled | draft, undercuts, depth ratio — all are measured along it |
 | unclear whether the mesh is the part or the tool | shrinkage applied twice, or not at all |
 | blank, clamp and method not stated by the user | every wall number: they set F1 (the tool lists its defaults in `assumptions`) |
+| `blank_check.blocker` is set | layout and wall: the default blank does not even take the part |
 
 **Strip post-forming features** rather than explaining them away: slots, holes and
 windows are machined after forming but exist in the model. Measure the shape that will
-actually be formed, or subtract those areas explicitly and say so.
+actually be formed, or subtract those areas explicitly and say so. A drilled hole still
+leaves a centre mark on the tool (`references/rules.md`, after section 9).
 
 A failed gate is reported as a blocker, not as a `❓`: the difference is that a blocker
 stops the comparison, while `❓` marks one check that could not be run.

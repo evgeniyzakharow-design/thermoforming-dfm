@@ -88,13 +88,18 @@ def layout(w, l, hm, clamp, bar, blanks, one_side=None, t=3.0, window=None):
                "window_source": "given" if window else "blank minus clamped rim"}
         for name, gap, edge in (("recommended", max(1.75 * hm, 25), 0.5 * hm),
                                 ("minimum", max(1.3 * hm, 25), 0.3 * hm)):
-            n = max(fits(win[0], a, edge, gap) * fits(win[1], b, edge, gap) for a, b in ((w, l), (l, w)))
-            # how much spare sheet is actually left round the moulds: too much webs (rules 6, 11)
-            spare = min((win[i] - (max(fits(win[i], d, edge, gap), 1) * d +
-                                   (max(fits(win[i], d, edge, gap), 1) - 1) * gap)) / 2.0
-                        for i, d in ((0, w), (1, l)))
+            # how much spare sheet is actually left round the moulds: too much webs (rules 6, 11).
+            # It is measured in the orientation that won the count — measured unrotated, a part
+            # that fits only turned read a negative edge and hid the webbing check with it
+            n, spare, dims = max(
+                (fits(win[0], a, edge, gap) * fits(win[1], b, edge, gap),
+                 min((win[i] - (max(fits(win[i], d, edge, gap), 1) * d +
+                                (max(fits(win[i], d, edge, gap), 1) - 1) * gap)) / 2.0
+                     for i, d in ((0, a), (1, b))), (a, b))
+                for a, b in ((w, l), (l, w)))
             row[name] = {"parts": n, "gap_mm": round(gap, 1), "edge_mm": round(edge, 1),
                          "fits": bool(n),
+                         "mould_on_window_mm": [round(dims[0], 1), round(dims[1], 1)],
                          "actual_edge_mm": round(spare, 1),
                          "actual_edge_in_H": round(spare / hm, 2) if hm else None}
             if not n:
@@ -394,17 +399,68 @@ def undercut_grid(mesh, p, pitch=2.0):
     w = np.cross(p, u)
     v = mesh.vertices
     a1, a2, ap = v @ u, v @ w, v @ p
-    g1 = np.arange(a1.min() + pitch / 2, a1.max(), pitch)
-    g2 = np.arange(a2.min() + pitch / 2, a2.max(), pitch)
+    # off the round-number grid: CAD walls sit on round coordinates, and a ray laid exactly
+    # along a wall face grazes it and counts crossings that are not there
+    g1 = np.arange(a1.min() + pitch * 0.513, a1.max(), pitch)
+    g2 = np.arange(a2.min() + pitch * 0.513, a2.max(), pitch)
     G1, G2 = np.meshgrid(g1, g2)
     origins = (G1.ravel()[:, None] * u + G2.ravel()[:, None] * w + (ap.min() - 10) * p)
-    _, idx_ray, _ = mesh.ray.intersects_location(origins, np.tile(p, (len(origins), 1)),
-                                                 multiple_hits=True)
+    loc, idx_ray, _ = mesh.ray.intersects_location(origins, np.tile(p, (len(origins), 1)),
+                                                   multiple_hits=True)
     counts = np.bincount(idx_ray, minlength=len(origins))
+    zs = undercut_zones(counts > 2, G1.shape, origins - np.outer(origins @ p, p),
+                        loc @ p, idx_ray, p, pitch)
     return {"pitch_mm": pitch,
             "footprint_mm2": round(float((counts > 0).sum() * pitch ** 2)),
             "undercut_area_mm2": round(float((counts > 2).sum() * pitch ** 2)),
-            "note": "rays crossing the solid more than twice; resolution is the grid pitch"}
+            "zones_total": len(zs),
+            "zones": zs[:10],
+            "note": ("rays crossing the solid more than twice; resolution is the grid pitch. Each zone "
+                     "is one place to fix — strip it off, give it a loose insert, or change the shape "
+                     "(references/rules.md, section 7). Zones are sorted by area; the first ten are listed")}
+
+
+# House threshold, not a sourced limit: an overhang this narrow may spring off a flexible
+# sheet without a loose piece. Raise it for soft TPO, drop it to 0 for a rigid PS or PMMA.
+STRIP_MM = 2.0
+
+
+def undercut_zones(under, shape, centres, along, idx_ray, p, pitch):
+    """Undercut cells grouped into connected zones: where each one is and how far it overhangs.
+
+    A single area says that something locks, not what to change. Per zone: its box in part
+    coordinates, the band along the pull between the first pass through the part and the
+    second, and the overhang width — twice the deepest distance into the zone from its edge,
+    so a 22 mm lip reads 22 whether it runs for 20 mm or for a metre.
+    """
+    from scipy import ndimage
+    lab, n = ndimage.label(under.reshape(shape))
+    if not n:
+        return []
+    depth = ndimage.distance_transform_edt(lab > 0).ravel()
+    lab = lab.ravel()
+    order = np.lexsort((along, idx_ray))
+    h = along[order]
+    first = np.searchsorted(idx_ray[order], np.arange(len(lab)))   # each ray's first hit
+    out = []
+    for k in range(1, n + 1):
+        cells = np.flatnonzero(lab == k)
+        lo, hi = h[first[cells] + 1].min(), h[first[cells] + 2].max()
+        pts = np.vstack([centres[cells] + lo * p, centres[cells] + hi * p])
+        width = (2 * depth[cells].max() - 1) * pitch
+        out.append({
+            "area_mm2": round(float(len(cells) * pitch ** 2)),
+            "box_min_mm": [round(float(x), 1) for x in pts.min(0)],
+            "box_max_mm": [round(float(x), 1) for x in pts.max(0)],
+            "overhang_mm": round(float(width), 1),
+            "fix": ("strip-off: may spring off a flexible sheet (PE, PP, TPO) with no loose piece; "
+                    "a rigid one (PS, ABS, PMMA, PC) locks — confirm the material"
+                    if width <= STRIP_MM else
+                    "loose insert or a change of shape: check the insert has a way out of the part "
+                    "and the seam it leaves is acceptable, else open the angle, bend after forming "
+                    "or split the part"),
+        })
+    return sorted(out, key=lambda z: -z["area_mm2"])
 
 
 def draped_mask(mesh, p, eps=0.01):
@@ -589,6 +645,9 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=None,
     lim = METHOD_DEPTH[method]
     lay = layout(fw, fl, hm, clamp, bar, blanks, one_side, t, window)
     rec = lay[0]["recommended"]
+    # one mould with the recommended 0.5 H to the frame, plus the clamped rim
+    min_blank = [round(d + hm + 2 * clamp) for d in (fw, fl)]
+    blank_given = "blank" in given or "window" in given
     win = lay[0]["window_mm"]
     s_avg = (rec.get("wall_illig") or {}).get("avg_mm")
     wi = rec.get("wall_illig") or {}
@@ -611,6 +670,13 @@ def measure(mesh, pull, t, clamp, trim, bar=25.0, dome=0.0, blow_rate=None,
                                  "the sheet is drawn over all of it; part_only is the part alone. "
                                  "Limits by method: male 0.25, male with a pre-blown bubble 0.5, "
                                  "plug assist 1.0, plug plus bubble 1.5-2")},
+        "blank_check": {
+            "min_blank_mm": min_blank,
+            "blocker": (None if blank_given or any(r["recommended"]["fits"] for r in lay) else
+                        "no blank was given and the default does not take this part: ask for the "
+                        "machine's sheet size (one part needs at least %d x %d mm). Wall and layout "
+                        "numbers for a default blank describe somebody else's machine" % tuple(min_blank)),
+        },
         "watertight": bool(mesh.is_watertight),
         "scale_check": {"bbox_diagonal_mm": round(float(np.linalg.norm(np.ptp(v, axis=0))), 1),
                         "units_suspect": bool(h < 5 or max(fw, fl) < 20 or max(fw, fl) > 2500),
@@ -744,7 +810,54 @@ def selftest():
     assert blow_fraction(100, 450, 1.05)[0] == 1.0
     big = measure(box, axis("z"), t=3, clamp=20, trim=0, bar=50, dome=150, path=tmp, pull_spec="z")
     assert big["bubble"]["oversized"] and big["bubble"]["share_of_draw"] == 1.0, big["bubble"]
+    assert pull_arg(["measure", "a.stl", "--pull", "-z", "--t", "3"]) == ["measure", "a.stl", "--pull=-z", "--t", "3"]
+    # a part that fits only turned: the spare sheet is measured turned too, not negative
+    side = measure(trimesh.creation.box([583, 1055, 132]), axis("z"), t=3, clamp=25, trim=0, bar=25,
+                   blanks=((1400, 900),), given=("blank",))
+    sr = side["layout"][0]["recommended"]
+    assert sr["parts"] == 1 and sr["actual_edge_mm"] > 0 and sr["mould_on_window_mm"] == [1055, 583], sr
+    assert side["blank_check"]["blocker"] is None and side["blank_check"]["min_blank_mm"] == [765, 1237]
+    assert huge["blank_check"]["blocker"] and r["blank_check"]["blocker"] is None
+    # a channel whose sides fold inward: one undercut zone per lip, located and measured
+    def channel(path, wall=3.0, length=200.0):
+        c = np.array(path, float)
+        seg = np.diff(c, axis=0); seg /= np.linalg.norm(seg, axis=1)[:, None]
+        nrm = np.c_[-seg[:, 1], seg[:, 0]]
+        nv = np.vstack([nrm[:1], nrm[:-1] + nrm[1:], nrm[-1:]]); nv /= np.linalg.norm(nv, axis=1)[:, None]
+        ring = np.vstack([c + nv * wall / 2, (c - nv * wall / 2)[::-1]])     # closed profile in XZ
+        k = len(ring)
+        v = np.vstack([np.c_[ring[:, 0], np.full(k, y), ring[:, 1]] for y in (0.0, length)])
+        m = len(c)
+        f = [[i, (i + 1) % k, k + (i + 1) % k] for i in range(k)] + \
+            [[i, k + (i + 1) % k, k + i] for i in range(k)]                    # side walls
+        for i in range(m - 1):                                                # both end caps
+            q = [i, i + 1, k - 2 - i, k - 1 - i]
+            f += [[q[0], q[2], q[1]], [q[0], q[3], q[2]]]
+            f += [[k + q[0], k + q[1], k + q[2]], [k + q[0], k + q[2], k + q[3]]]
+        ch = trimesh.Trimesh(v, f, process=True)
+        if ch.volume < 0:
+            ch.invert()
+        return ch
+    ch = channel([(12, 52), (0, 40), (0, 0), (100, 0), (100, 40), (88, 52)])
+    assert ch.is_watertight, "test channel must be watertight"
+    zs = undercut_grid(ch, axis("z"), 1.0)["zones"]
+    assert len(zs) == 2, zs
+    left = min(zs, key=lambda z: z["box_min_mm"][0])
+    assert left["box_max_mm"][0] < 16 and 8 <= left["overhang_mm"] <= 14, left
+    assert 0 <= left["box_min_mm"][2] and left["box_max_mm"][2] <= 56, left
+    assert left["fix"].startswith("loose insert"), left
     print("selftest ok")
+
+
+def pull_arg(argv):
+    """argparse reads `--pull -z` as two flags; glue the value on, so -z works as documented."""
+    out = []
+    for x in argv:
+        if out and out[-1] == "--pull" and x[:1] == "-":
+            out[-1] = "--pull=" + x
+        else:
+            out.append(x)
+    return out
 
 
 def main():
@@ -771,7 +884,7 @@ def main():
                    help="forming method — it sets the depth limit. Default is the strictest (male, 0.25); "
                         "giving a bubble promotes it to male-bubble (0.5)")
     sp.add_parser("selftest")
-    a = ap.parse_args()
+    a = ap.parse_args(pull_arg(sys.argv[1:]))
     if a.cmd == "selftest":
         return selftest()
     try:
