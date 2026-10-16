@@ -52,8 +52,9 @@ python3 skills/thermoforming-dfm/scripts/vf_tool.py measure part.stl --pull z --
   male tool no matter how smooth it is — a release failure, and the one a magnitude-only
   draft check misses. Plus undercuts and projected area measured in the same pass: facets on fillets
   tangent to the pull are reported apart from real vertical walls, undercuts come from
-  counting how often a line along the pull crosses the solid, and the vacuum force on the
-  mould base follows from the projected area.
+  counting how often a line along the pull crosses the solid — reported per zone, with
+  where it is and how far it overhangs, and a fix from strip-off to a loose insert — and
+  the vacuum force on the mould base follows from the projected area.
 
 Nothing else is required to run it, and the built-in numbers are always the primary
 answer — the same part measures the same on every machine. If the

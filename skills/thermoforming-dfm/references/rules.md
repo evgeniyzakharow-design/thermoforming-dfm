@@ -127,8 +127,42 @@ rectangular for rectangular ones — the thickness distribution comes out more e
 
 ## 7. Undercuts
 
-No undercuts, or the part must release along a tilted pull. Split tools and moving
-sections exist but belong to a different class of machine.
+An undercut is not an automatic refusal. Every zone the tool reports
+(`undercuts.zones`: box, band along the pull, `overhang_mm`) gets one of four fixes,
+cheapest first, and the review names which one and what it costs.
+
+1. **Strip it off.** An overhang of a couple of millimetres can spring off a flexible
+   sheet — PE, PP, TPO — with no loose piece. A rigid sheet (PS, ABS, PMMA, PC) locks on
+   the same geometry. The tool's `STRIP_MM` = 2 mm is a house threshold, not a sourced
+   limit; ask the material before relying on it.
+2. **Loose insert.** The part of the tool under the overhang is made as a separate piece
+   seated on the main tool, usually held by magnets. It comes off with the part, is taken
+   out of the part by hand and put back for the next cycle. A former reviewing a 1055 mm
+   side panel with both sides folded inward proposed exactly this: a three-piece tool,
+   the main body plus one insert per fold. It works only when all of these hold:
+   - **the insert has a way out of the part** — some straight move frees it. A lip running
+     along an open side lets the insert slide out sideways; a ring round a closed pocket
+     traps a one-piece insert, and it has to be cut into segments, each with its own seam;
+   - **the insert is not locked onto the main tool** — its seat is drafted along the pull,
+     or it stays on the tool and the part with it;
+   - **the seam is acceptable.** Every joint between insert and main tool prints on the
+     tool side of the part as a visible line. On a show face this goes to the customer
+     before the tool is made, not after the first part;
+   - **the run is small enough for a hand operation every cycle.** Tens of parts, yes; for
+     thousands, a mechanical or pneumatic slide, which is a different class of tooling;
+   - **the sheet reaches into the undercut at all** — a deep narrow fold thins out or webs
+     whatever the tool is made of (§3, §11);
+   - **the insert holds and seals.** Magnets must hold against the vacuum and the pull of
+     the sheet; neodymium loses strength above about 80 C, and the tool runs warm. The
+     seat needs venting like any other pocket (§8).
+3. **Change the shape.** Open the fold to a positive draft, or change the pull direction
+   (`--pull`). Often the fold is styling the customer will give up once the seam is shown.
+4. **Form open, finish after.** Form the fold open and bend it after forming with local
+   heat — a long straight fold suits this and leaves no seam — or split the part in two
+   and join them.
+
+None of the four is chosen by geometry alone: the seam, the run and the material are the
+customer's answers, so the review asks them.
 
 ## 8. Venting
 
@@ -156,6 +190,12 @@ Add 12 mm plus one sheet thickness above the part for the trim line, and design 
 mould so the trim line is accessible. Composite tooling uses 5-10 mm for prepreg; the
 principle is the same — the formed part is always open on one side and always needs
 trimming.
+
+**Holes drilled after forming leave a mark on the tool.** The hole itself is not
+formed (it would read as zero draft and undercut, and the sheet would web into it), but
+the tool carries a small centre mark — a dimple or a cone at the hole centre — so the
+hole saw or the drill starts in the right place without a jig. A hole saw on the mark is
+quicker than milling the hole out.
 
 ## 10. Shrinkage and tolerances
 
